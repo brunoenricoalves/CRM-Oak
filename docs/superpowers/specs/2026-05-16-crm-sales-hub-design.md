@@ -42,8 +42,35 @@ Um usuário pode pertencer a múltiplas organizações. A organização ativa é
 Supabase Auth com email/senha e magic link.
 
 **Fluxo de criação de conta:**
-1. Usuário se registra → cria uma nova organização (nome + slug)
-2. Passa a ser `admin` dessa organização automaticamente
+1. Usuário se registra via Supabase Auth
+2. Server Action chama `create_org_and_admin(name, slug)` — função `SECURITY DEFINER` que usa o cliente `supabaseAdmin` (service_role) para:
+   - Inserir em `organizations` (sem INSERT policy pública — bloqueado para o client anon/user)
+   - Inserir em `org_members` com `role = 'admin'`
+   - Retornar o `org_id` criado
+3. Usuário passa a ser `admin` da organização automaticamente
+
+```sql
+CREATE OR REPLACE FUNCTION create_org_and_admin(
+  p_name text,
+  p_slug text,
+  p_user_id uuid
+)
+RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_org_id uuid;
+BEGIN
+  INSERT INTO public.organizations (name, slug)
+  VALUES (p_name, p_slug)
+  RETURNING id INTO v_org_id;
+
+  INSERT INTO public.org_members (org_id, user_id, role)
+  VALUES (v_org_id, p_user_id, 'admin');
+
+  RETURN v_org_id;
+END;
+$$;
+```
 
 **Fluxo de convite:**
 1. Admin acessa `/settings/members` e envia convite por email
@@ -121,6 +148,7 @@ invitations
   org_id      uuid        NOT NULL FK → organizations
   email       text        NOT NULL
   token       text        NOT NULL UNIQUE
+  -- gerado com encode(gen_random_bytes(32), 'hex') — não UUID (menor entropia)
   role        text        NOT NULL CHECK (role IN ('admin', 'member'))
   invited_by  uuid        NOT NULL FK → auth.users
   expires_at  timestamptz NOT NULL DEFAULT now() + interval '7 days'
@@ -137,7 +165,7 @@ contacts
   phone       text        NULL
   company_id  uuid        NULL FK → companies
   owner_id    uuid        NULL FK → auth.users
-  -- owner_id validado como membro da mesma org via trigger BEFORE INSERT OR UPDATE
+  -- owner_id validado como membro da mesma org via trigger validate_owner_org_membership
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -176,7 +204,7 @@ deals
   contact_id  uuid        NULL FK → contacts
   company_id  uuid        NULL FK → companies
   owner_id    uuid        NULL FK → auth.users
-  -- owner_id validado como membro da mesma org via trigger BEFORE INSERT OR UPDATE
+  -- owner_id validado como membro da mesma org via trigger validate_owner_org_membership
   status      text        NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'won', 'lost'))
   closed_at   timestamptz NULL
   -- closed_at preenchido automaticamente via trigger BEFORE UPDATE quando status muda para 'won' ou 'lost'
@@ -211,6 +239,7 @@ tasks
   due_date    timestamptz NULL
   done        boolean     NOT NULL DEFAULT false
   assigned_to uuid        NULL FK → auth.users
+  -- assigned_to validado como membro da mesma org via trigger validate_owner_org_membership
   created_by  uuid        NOT NULL FK → auth.users
   contact_id  uuid        NULL FK → contacts
   company_id  uuid        NULL FK → companies
@@ -283,6 +312,21 @@ $$;
 ```
 
 Esta função é usada nas policies de `org_members` (onde a auto-referência causaria recursão infinita) e na policy `admin_update_org` de `organizations`.
+
+Para as policies das tabelas de negócio, usa-se um helper análogo `is_org_member` para centralizar o subquery e facilitar manutenção futura (ex: adicionar status `suspended`):
+
+```sql
+CREATE OR REPLACE FUNCTION is_org_member(p_org_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.org_members
+    WHERE org_id = p_org_id AND user_id = auth.uid()
+  );
+$$;
+```
+
+> **Nota operacional — FORCE ROW LEVEL SECURITY:** RLS não se aplica ao dono da tabela por padrão no PostgreSQL. No Supabase, queries de migrations e debug via `postgres` role bypassam RLS. Para proteger contra isso em produção: `ALTER TABLE <table> FORCE ROW LEVEL SECURITY;` — mas aplique com cuidado pois bloqueia migrations que usam o role dono. Em Supabase Cloud isso é gerenciado pela plataforma; documentar para equipes que rodam self-hosted.
 
 ### organizations
 
@@ -465,6 +509,55 @@ CREATE TRIGGER protect_last_admin
   FOR EACH ROW EXECUTE FUNCTION ensure_org_has_admin();
 ```
 
+**Validação de owner_id e assigned_to (cross-org membership):**
+
+`contacts.owner_id`, `deals.owner_id` e `tasks.assigned_to` devem pertencer à mesma org do registro. Um trigger `BEFORE INSERT OR UPDATE` valida isso:
+
+```sql
+CREATE OR REPLACE FUNCTION validate_owner_org_membership()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+DECLARE
+  v_org_id uuid;
+  v_user_col text;
+  v_user_id uuid;
+BEGIN
+  -- Determina a coluna de usuário e o org_id conforme a tabela
+  IF TG_TABLE_NAME = 'contacts' OR TG_TABLE_NAME = 'deals' THEN
+    v_user_id := NEW.owner_id;
+  ELSIF TG_TABLE_NAME = 'tasks' THEN
+    v_user_id := NEW.assigned_to;
+  END IF;
+
+  -- Se NULL, aceita (campos opcionais)
+  IF v_user_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM public.org_members
+    WHERE org_id = NEW.org_id AND user_id = v_user_id
+  ) THEN
+    RAISE EXCEPTION 'O usuário % não é membro da organização %', v_user_id, NEW.org_id;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER validate_contacts_owner
+  BEFORE INSERT OR UPDATE ON contacts
+  FOR EACH ROW EXECUTE FUNCTION validate_owner_org_membership();
+
+CREATE TRIGGER validate_deals_owner
+  BEFORE INSERT OR UPDATE ON deals
+  FOR EACH ROW EXECUTE FUNCTION validate_owner_org_membership();
+
+CREATE TRIGGER validate_tasks_assigned_to
+  BEFORE INSERT OR UPDATE ON tasks
+  FOR EACH ROW EXECUTE FUNCTION validate_owner_org_membership();
+```
+
 ### invitations
 
 ```sql
@@ -597,5 +690,6 @@ Configurações
 - Importação em massa via CSV
 - Mobile app
 - Subdomínios por organização (`slug` disponível no schema para uso futuro)
+- Deleção de organização (sem DELETE policy em `organizations` — apenas via service_role em suporte manual)
 
 Esses módulos podem ser adicionados em versões futuras após validação do MVP.
