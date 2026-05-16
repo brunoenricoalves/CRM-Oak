@@ -176,9 +176,10 @@ deals
   -- closed_at preenchido automaticamente via trigger BEFORE UPDATE quando status muda para 'won' ou 'lost'
   -- zerado (NULL) se status voltar para 'open'
   close_date  date        NULL
-  position    float8      NOT NULL DEFAULT 0
+  position    float8      NOT NULL
   -- posição no kanban dentro do stage; mesma estratégia de float8 do pipeline_stages
-  -- novo deal: position = MAX(position dentro do stage) + 1.0
+  -- application code sempre fornece o valor: MAX(position dentro do stage) + 1.0
+  -- sem DEFAULT — forçar cálculo explícito na aplicação para evitar colisões de posição 0
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -214,13 +215,20 @@ tasks
 
 ```sql
 -- org_id em todas as tabelas principais (filtragem RLS + queries de lista)
-CREATE INDEX ON contacts      (org_id);
-CREATE INDEX ON companies     (org_id);
-CREATE INDEX ON deals         (org_id, status);
-CREATE INDEX ON deals         (org_id, stage_id, position);
-CREATE INDEX ON activities    (org_id, created_at DESC);
-CREATE INDEX ON tasks         (org_id, done, due_date);
+CREATE INDEX ON contacts        (org_id);
+CREATE INDEX ON companies       (org_id);
+CREATE INDEX ON deals           (org_id, status);
+CREATE INDEX ON deals           (org_id, stage_id, position);
+CREATE INDEX ON activities      (org_id, created_at DESC);
+CREATE INDEX ON tasks           (org_id, done, due_date);
 CREATE INDEX ON pipeline_stages (org_id, position);
+
+-- org_members: filtragem por user_id em todas as policies RLS do sistema
+CREATE INDEX ON org_members (user_id);
+
+-- invitations: filtragem por org_id nas policies de admin
+CREATE INDEX ON invitations (org_id);
+-- token já tem índice UNIQUE implícito
 ```
 
 ---
@@ -229,7 +237,38 @@ CREATE INDEX ON pipeline_stages (org_id, position);
 
 RLS habilitado em todas as tabelas. Padrão: acesso negado por default.
 
+```sql
+-- Habilitar RLS em todas as tabelas (executar antes de criar as policies)
+ALTER TABLE organizations    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE org_members      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE invitations      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contacts         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE companies        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pipeline_stages  ENABLE ROW LEVEL SECURITY;
+ALTER TABLE deals            ENABLE ROW LEVEL SECURITY;
+ALTER TABLE activities       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE tasks            ENABLE ROW LEVEL SECURITY;
+```
+
 > **Nota:** A sintaxe `FOR INSERT OR UPDATE` não é válida em PostgreSQL. Cada comando tem sua própria policy ou usa `FOR ALL` com `USING` + `WITH CHECK`.
+
+### Helper SECURITY DEFINER
+
+Policies em `org_members` que referenciam `org_members` internamente causam recursão infinita em PostgreSQL. A solução é uma função `SECURITY DEFINER` que bypassa RLS e é chamada pelas policies:
+
+```sql
+CREATE OR REPLACE FUNCTION is_org_admin(p_org_id uuid)
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM org_members
+    WHERE org_id = p_org_id
+      AND user_id = auth.uid()
+      AND role = 'admin'
+  );
+$$;
+```
+
+Esta função é usada exclusivamente nas policies de `org_members`.
 
 ### Tabelas com dados de negócio (contacts, companies, deals, activities, tasks, pipeline_stages)
 
@@ -320,52 +359,31 @@ CREATE POLICY "admin_delete_stages" ON pipeline_stages
 ### org_members
 
 ```sql
--- SELECT: usuário vê todos os membros das orgs que pertence (necessário para org switcher)
+-- SELECT 1: usuário vê suas próprias linhas (org switcher — quais orgs o usuário pertence)
 CREATE POLICY "select_own_memberships" ON org_members
   FOR SELECT
   USING (user_id = auth.uid());
 
--- INSERT/UPDATE/DELETE: somente admins da org
+-- SELECT 2: admin vê todos os membros da org (página /settings/members)
+CREATE POLICY "admin_select_org_members" ON org_members
+  FOR SELECT
+  USING (is_org_admin(org_id));
+
+-- INSERT: defense-in-depth para INSERTs diretos por admins (re-adicionar membro removido)
+-- O fluxo de convite usa SECURITY DEFINER function e não passa por esta policy
 CREATE POLICY "admin_insert_members" ON org_members
   FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM org_members AS om
-      WHERE om.org_id = org_members.org_id
-        AND om.user_id = auth.uid()
-        AND om.role = 'admin'
-    )
-  );
+  WITH CHECK (is_org_admin(org_members.org_id));
+  -- usa is_org_admin() para evitar recursão infinita (self-referential RLS)
 
 CREATE POLICY "admin_update_members" ON org_members
   FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM org_members AS om
-      WHERE om.org_id = org_members.org_id
-        AND om.user_id = auth.uid()
-        AND om.role = 'admin'
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM org_members AS om
-      WHERE om.org_id = org_members.org_id
-        AND om.user_id = auth.uid()
-        AND om.role = 'admin'
-    )
-  );
+  USING     (is_org_admin(org_members.org_id))
+  WITH CHECK (is_org_admin(org_members.org_id));
 
 CREATE POLICY "admin_delete_members" ON org_members
   FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM org_members AS om
-      WHERE om.org_id = org_members.org_id
-        AND om.user_id = auth.uid()
-        AND om.role = 'admin'
-    )
-  );
+  USING (is_org_admin(org_members.org_id));
 ```
 
 ### invitations
@@ -373,7 +391,7 @@ CREATE POLICY "admin_delete_members" ON org_members
 ```sql
 -- SELECT público por token válido (para landing page /invite/[token])
 -- Feito via SECURITY DEFINER function — não via RLS direta — para evitar expor outros campos
--- A function valida token + expires_at IS NULL + accepted_at IS NULL antes de retornar
+-- A function valida: token existe + expires_at > now() + accepted_at IS NULL antes de retornar
 
 -- SELECT para admins da org (para listar convites pendentes em /settings/members)
 CREATE POLICY "admin_select_invitations" ON invitations
