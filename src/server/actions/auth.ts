@@ -1,7 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { signupSchema, loginSchema } from '@/lib/validations/auth'
 import { generateSlug } from '@/lib/utils/slug'
@@ -9,7 +9,7 @@ import { generateSlug } from '@/lib/utils/slug'
 export async function login(formData: FormData) {
   const raw = { email: formData.get('email'), password: formData.get('password') }
   const parsed = loginSchema.safeParse(raw)
-  if (!parsed.success) return { error: parsed.error.errors[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
@@ -26,7 +26,7 @@ export async function signup(formData: FormData) {
     password: formData.get('password'),
   }
   const parsed = signupSchema.safeParse(raw)
-  if (!parsed.success) return { error: parsed.error.errors[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
 
@@ -41,7 +41,8 @@ export async function signup(formData: FormData) {
   // 2. Criar org via SECURITY DEFINER function (bypassa RLS)
   const admin = createAdminClient()
   const slug = generateSlug(parsed.data.orgName)
-  const { error: orgError } = await admin.rpc('create_org_and_admin', {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error: orgError } = await (admin as any).rpc('create_org_and_admin', {
     p_name: parsed.data.orgName,
     p_slug: slug,
     p_user_id: authData.user.id,
