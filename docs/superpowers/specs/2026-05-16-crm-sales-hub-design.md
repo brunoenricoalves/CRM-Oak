@@ -258,19 +258,44 @@ Policies em `org_members` que referenciam `org_members` internamente causam recu
 
 ```sql
 CREATE OR REPLACE FUNCTION is_org_admin(p_org_id uuid)
-RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER AS $$
+RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER
+SET search_path = public AS $$
   SELECT EXISTS (
-    SELECT 1 FROM org_members
+    SELECT 1 FROM public.org_members
     WHERE org_id = p_org_id
       AND user_id = auth.uid()
       AND role = 'admin'
   );
 $$;
+-- SET search_path = public previne search path injection em funções SECURITY DEFINER
+-- (exigido pelo linter do Supabase)
 ```
 
 Esta função é usada exclusivamente nas policies de `org_members`.
 
-### Tabelas com dados de negócio (contacts, companies, deals, activities, tasks, pipeline_stages)
+### organizations
+
+```sql
+-- SELECT: usuário vê apenas orgs das quais é membro (org switcher, invitation landing page)
+CREATE POLICY "select_own_orgs" ON organizations
+  FOR SELECT
+  USING (
+    id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid())
+  );
+
+-- UPDATE: somente admins atualizam nome/slug da org
+CREATE POLICY "admin_update_org" ON organizations
+  FOR UPDATE
+  USING     (is_org_admin(id))
+  WITH CHECK (is_org_admin(id));
+
+-- INSERT: criação de org via SECURITY DEFINER function (usuário não tem membership ainda)
+-- Sem política de INSERT pública — bloqueado por default; signup flow usa service_role
+```
+
+### Tabelas com dados de negócio (contacts, companies, deals, activities, tasks)
+
+> **Nota:** `pipeline_stages` tem policies próprias na seção abaixo; não aplicar o template genérico nela.
 
 ```sql
 -- SELECT: membros da org leem seus próprios dados
@@ -308,10 +333,10 @@ CREATE POLICY "delete_own_org" ON <table>
 ### pipeline_stages — somente admins modificam
 
 ```sql
--- SELECT: todos os membros da org
+-- SELECT: todos os membros da org (não usa o template genérico — tem policies próprias)
 CREATE POLICY "select_stages" ON pipeline_stages
   FOR SELECT
-  USING (org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid()));
+  USING (org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid()));
 
 -- INSERT/UPDATE/DELETE: somente admins
 CREATE POLICY "admin_insert_stages" ON pipeline_stages
@@ -418,6 +443,19 @@ CREATE POLICY "admin_insert_invitations" ON invitations
   );
 
 -- UPDATE (marcar accepted_at): feito via SECURITY DEFINER function, sem policy de UPDATE pública
+-- Sem UPDATE policy = bloqueado por RLS default (intencional)
+
+-- DELETE: admins podem revogar convites pendentes
+CREATE POLICY "admin_delete_invitations" ON invitations
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.org_members
+      WHERE org_id = invitations.org_id
+        AND user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
 ```
 
 ---
