@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-16  
 **Referência:** HubSpot Sales Hub  
-**Status:** Aprovado (revisado após code review)
+**Status:** Aprovado (revisado após 2 rounds de code review)
 
 ---
 
@@ -35,7 +35,7 @@ CRM SaaS multi-tenant inspirado no HubSpot Sales Hub, desenvolvido para uso inte
 
 Cada cliente do SaaS é uma **organização**. Todos os registros no banco possuem `org_id`. Row Level Security (RLS) do Supabase garante isolamento total — usuários só acessam dados da própria organização.
 
-Um usuário pode pertencer a múltiplas organizações. A organização ativa é armazenada em um cookie de sessão e referenciada via JWT claim `org_id`. A UI expõe um org switcher no header da sidebar.
+Um usuário pode pertencer a múltiplas organizações. A organização ativa é armazenada em um cookie de sessão. A UI expõe um org switcher no header da sidebar.
 
 ### Autenticação e Onboarding
 
@@ -47,11 +47,13 @@ Supabase Auth com email/senha e magic link.
 
 **Fluxo de convite:**
 1. Admin acessa `/settings/members` e envia convite por email
-2. Sistema gera token único, persiste em `invitations`, envia email via Resend
-3. Destinatário acessa `/invite/[token]`
-4. Se não tem conta: cria conta e entra na org automaticamente
+2. Sistema gera token único via `SECURITY DEFINER` function, persiste em `invitations`, envia email via Resend
+3. Destinatário acessa `/invite/[token]` — lookup via `SECURITY DEFINER` function (sem RLS) para validar token não expirado
+4. Se não tem conta: cria conta e entra na org automaticamente (INSERT em `org_members` via `SECURITY DEFINER`)
 5. Se já tem conta: faz login e entra na org (multi-org suportado)
 6. Token expira em 7 dias; convites aceitos marcados com `accepted_at`
+
+A aceitação do convite usa uma `SECURITY DEFINER` function no Supabase, pois o usuário ainda não é membro da org e não passaria pelas policies RLS normais.
 
 **Rotas de convite:**
 - `POST /settings/members/invite` — admin envia convite (role: admin ou member)
@@ -70,24 +72,32 @@ Supabase Auth com email/senha e magic link.
 
 ### Busca
 
-Busca em contatos e empresas usa `pg_trgm` com índice GIN. Configurado na criação do schema — não retroativo.
+Busca em contatos e empresas usa `pg_trgm` com índice GIN — suporta busca parcial com performance em escala.
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
-CREATE INDEX contacts_name_trgm ON contacts USING GIN (name gin_trgm_ops);
-CREATE INDEX contacts_email_trgm ON contacts USING GIN (email gin_trgm_ops);
-CREATE INDEX companies_name_trgm ON companies USING GIN (name gin_trgm_ops);
+CREATE INDEX contacts_name_trgm   ON contacts  USING GIN (name  gin_trgm_ops);
+CREATE INDEX contacts_email_trgm  ON contacts  USING GIN (email gin_trgm_ops);
+CREATE INDEX companies_name_trgm  ON companies USING GIN (name  gin_trgm_ops);
 ```
 
 ---
 
 ## Modelo de Dados
 
+`updated_at` é atualizado automaticamente via trigger `moddatetime` (extensão do Supabase) em todas as tabelas que o possuem.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS moddatetime;
+-- aplicar trigger em cada tabela: CREATE TRIGGER ... BEFORE UPDATE ON <table> ...
+```
+
 ```sql
 organizations
   id          uuid        PK DEFAULT gen_random_uuid()
   name        text        NOT NULL
-  slug        text        NOT NULL UNIQUE  -- usado no org switcher e URLs futuras
+  slug        text        NOT NULL UNIQUE
+  -- slug gerado a partir do nome; colisões resolvidas com sufixo aleatório
   plan        text        NOT NULL DEFAULT 'free'
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
@@ -97,6 +107,8 @@ org_members
   user_id     uuid        NOT NULL FK → auth.users
   role        text        NOT NULL CHECK (role IN ('admin', 'member'))
   invited_at  timestamptz NOT NULL DEFAULT now()
+  updated_at  timestamptz NOT NULL DEFAULT now()
+  -- updated_at reflete promoções/rebaixamentos de role
   PRIMARY KEY (org_id, user_id)
 
 invitations
@@ -109,16 +121,18 @@ invitations
   expires_at  timestamptz NOT NULL DEFAULT now() + interval '7 days'
   accepted_at timestamptz NULL
   created_at  timestamptz NOT NULL DEFAULT now()
+  updated_at  timestamptz NOT NULL DEFAULT now()
 
 contacts
   id          uuid        PK DEFAULT gen_random_uuid()
   org_id      uuid        NOT NULL FK → organizations
   name        text        NOT NULL
   email       text        NULL
+  -- emails não são únicos por org (um contato pode ter múltiplos registros intencionalmente)
   phone       text        NULL
   company_id  uuid        NULL FK → companies
   owner_id    uuid        NULL FK → auth.users
-  -- owner_id deve ser membro da org (validado via trigger ou CHECK na aplicação)
+  -- owner_id validado como membro da mesma org via trigger BEFORE INSERT OR UPDATE
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -128,7 +142,7 @@ companies
   name        text        NOT NULL
   domain      text        NULL
   industry    text        NULL
-  size        text        NULL  -- ex: '1-10', '11-50', '51-200', '200+'
+  size        text        NULL  -- '1-10' | '11-50' | '51-200' | '200+'
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -136,7 +150,11 @@ pipeline_stages
   id          uuid        PK DEFAULT gen_random_uuid()
   org_id      uuid        NOT NULL FK → organizations
   name        text        NOT NULL
-  position    int         NOT NULL
+  position    float8      NOT NULL
+  -- float8 permite reordenação drag & drop sem renumerar todos os registros
+  -- novo stage: position = MAX(position) + 1.0
+  -- reordenação: position = (position_anterior + position_posterior) / 2
+  -- rebalanceamento: quando diferença < 0.001, renumerar todos com espaçamento 1.0
   color       text        NULL
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
@@ -148,14 +166,19 @@ deals
   title       text        NOT NULL
   value       numeric     NULL
   stage_id    uuid        NULL FK → pipeline_stages ON DELETE RESTRICT
+  -- stage_id NULL = deal sem stage ("Sem estágio"); exibido em coluna separada no kanban
   contact_id  uuid        NULL FK → contacts
   company_id  uuid        NULL FK → companies
   owner_id    uuid        NULL FK → auth.users
-  -- owner_id deve ser membro da org (validado via trigger ou CHECK na aplicação)
+  -- owner_id validado como membro da mesma org via trigger BEFORE INSERT OR UPDATE
   status      text        NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'won', 'lost'))
-  closed_at   timestamptz NULL  -- preenchido quando status muda para won/lost
-  close_date  date        NULL  -- data prevista de fechamento
-  position    float8      NOT NULL DEFAULT 0  -- ordem dentro do stage no kanban (Lexorank)
+  closed_at   timestamptz NULL
+  -- closed_at preenchido automaticamente via trigger BEFORE UPDATE quando status muda para 'won' ou 'lost'
+  -- zerado (NULL) se status voltar para 'open'
+  close_date  date        NULL
+  position    float8      NOT NULL DEFAULT 0
+  -- posição no kanban dentro do stage; mesma estratégia de float8 do pipeline_stages
+  -- novo deal: position = MAX(position dentro do stage) + 1.0
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -169,6 +192,7 @@ activities
   deal_id     uuid        NULL FK → deals
   user_id     uuid        NOT NULL FK → auth.users
   created_at  timestamptz NOT NULL DEFAULT now()
+  -- activities são imutáveis (append-only); sem updated_at
   CONSTRAINT activity_has_target
     CHECK (contact_id IS NOT NULL OR deal_id IS NOT NULL OR company_id IS NOT NULL)
 
@@ -180,46 +204,80 @@ tasks
   done        boolean     NOT NULL DEFAULT false
   assigned_to uuid        NULL FK → auth.users
   contact_id  uuid        NULL FK → contacts
+  company_id  uuid        NULL FK → companies
   deal_id     uuid        NULL FK → deals
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 ```
 
-**Relações chave:**
-- Um deal pertence opcionalmente a um contato e/ou empresa
-- Atividades podem ser associadas a contato, empresa, deal ou qualquer combinação — mas pelo menos um vínculo é obrigatório (CHECK constraint)
-- Deals com `status = 'won'` ou `'lost'` preenchem `closed_at` automaticamente
-- Deleção de `pipeline_stage`: bloqueada por FK RESTRICT — UI exibe diálogo "mova os deals para outro stage antes de deletar"
-- `deals.position` usa float8 (estilo Lexorank) para reordenação drag & drop sem reescrever todos os registros
-- `owner_id` em contacts e deals deve ser validado como membro da mesma `org_id` (trigger na camada de aplicação)
+### Índices de performance
+
+```sql
+-- org_id em todas as tabelas principais (filtragem RLS + queries de lista)
+CREATE INDEX ON contacts      (org_id);
+CREATE INDEX ON companies     (org_id);
+CREATE INDEX ON deals         (org_id, status);
+CREATE INDEX ON deals         (org_id, stage_id, position);
+CREATE INDEX ON activities    (org_id, created_at DESC);
+CREATE INDEX ON tasks         (org_id, done, due_date);
+CREATE INDEX ON pipeline_stages (org_id, position);
+```
 
 ---
 
 ## Políticas RLS
 
-Todas as tabelas têm RLS habilitado. Padrão: acesso negado por default, políticas permitem apenas membros da org.
+RLS habilitado em todas as tabelas. Padrão: acesso negado por default.
+
+> **Nota:** A sintaxe `FOR INSERT OR UPDATE` não é válida em PostgreSQL. Cada comando tem sua própria policy ou usa `FOR ALL` com `USING` + `WITH CHECK`.
+
+### Tabelas com dados de negócio (contacts, companies, deals, activities, tasks, pipeline_stages)
 
 ```sql
--- Padrão aplicado a todas as tabelas com org_id
--- SELECT
-CREATE POLICY "org_members_select" ON <table>
-  FOR SELECT USING (
-    org_id IN (
-      SELECT org_id FROM org_members WHERE user_id = auth.uid()
-    )
+-- SELECT: membros da org leem seus próprios dados
+CREATE POLICY "select_own_org" ON <table>
+  FOR SELECT
+  USING (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
   );
 
--- INSERT / UPDATE / DELETE (mesma lógica de org membership)
-CREATE POLICY "org_members_write" ON <table>
-  FOR ALL USING (
-    org_id IN (
-      SELECT org_id FROM org_members WHERE user_id = auth.uid()
-    )
+-- INSERT: membro só insere em org da qual faz parte
+CREATE POLICY "insert_own_org" ON <table>
+  FOR INSERT
+  WITH CHECK (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
   );
 
--- pipeline_stages: somente admins podem modificar
-CREATE POLICY "admin_only_stages" ON pipeline_stages
-  FOR INSERT OR UPDATE OR DELETE USING (
+-- UPDATE: membro só atualiza registros da própria org
+CREATE POLICY "update_own_org" ON <table>
+  FOR UPDATE
+  USING (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+  )
+  WITH CHECK (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+  );
+
+-- DELETE: membro só deleta registros da própria org
+CREATE POLICY "delete_own_org" ON <table>
+  FOR DELETE
+  USING (
+    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+  );
+```
+
+### pipeline_stages — somente admins modificam
+
+```sql
+-- SELECT: todos os membros da org
+CREATE POLICY "select_stages" ON pipeline_stages
+  FOR SELECT
+  USING (org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid()));
+
+-- INSERT/UPDATE/DELETE: somente admins
+CREATE POLICY "admin_insert_stages" ON pipeline_stages
+  FOR INSERT
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM org_members
       WHERE org_id = pipeline_stages.org_id
@@ -228,9 +286,49 @@ CREATE POLICY "admin_only_stages" ON pipeline_stages
     )
   );
 
--- org_members: somente admins podem convidar/remover
-CREATE POLICY "admin_only_members" ON org_members
-  FOR INSERT OR UPDATE OR DELETE USING (
+CREATE POLICY "admin_update_stages" ON pipeline_stages
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM org_members
+      WHERE org_id = pipeline_stages.org_id
+        AND user_id = auth.uid()
+        AND role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM org_members
+      WHERE org_id = pipeline_stages.org_id
+        AND user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+
+CREATE POLICY "admin_delete_stages" ON pipeline_stages
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM org_members
+      WHERE org_id = pipeline_stages.org_id
+        AND user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+```
+
+### org_members
+
+```sql
+-- SELECT: usuário vê todos os membros das orgs que pertence (necessário para org switcher)
+CREATE POLICY "select_own_memberships" ON org_members
+  FOR SELECT
+  USING (user_id = auth.uid());
+
+-- INSERT/UPDATE/DELETE: somente admins da org
+CREATE POLICY "admin_insert_members" ON org_members
+  FOR INSERT
+  WITH CHECK (
     EXISTS (
       SELECT 1 FROM org_members AS om
       WHERE om.org_id = org_members.org_id
@@ -239,9 +337,48 @@ CREATE POLICY "admin_only_members" ON org_members
     )
   );
 
--- invitations: somente admins criam; token lookup é público (para /invite/[token])
-CREATE POLICY "admin_creates_invitations" ON invitations
-  FOR INSERT USING (
+CREATE POLICY "admin_update_members" ON org_members
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM org_members AS om
+      WHERE om.org_id = org_members.org_id
+        AND om.user_id = auth.uid()
+        AND om.role = 'admin'
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM org_members AS om
+      WHERE om.org_id = org_members.org_id
+        AND om.user_id = auth.uid()
+        AND om.role = 'admin'
+    )
+  );
+
+CREATE POLICY "admin_delete_members" ON org_members
+  FOR DELETE
+  USING (
+    EXISTS (
+      SELECT 1 FROM org_members AS om
+      WHERE om.org_id = org_members.org_id
+        AND om.user_id = auth.uid()
+        AND om.role = 'admin'
+    )
+  );
+```
+
+### invitations
+
+```sql
+-- SELECT público por token válido (para landing page /invite/[token])
+-- Feito via SECURITY DEFINER function — não via RLS direta — para evitar expor outros campos
+-- A function valida token + expires_at IS NULL + accepted_at IS NULL antes de retornar
+
+-- SELECT para admins da org (para listar convites pendentes em /settings/members)
+CREATE POLICY "admin_select_invitations" ON invitations
+  FOR SELECT
+  USING (
     EXISTS (
       SELECT 1 FROM org_members
       WHERE org_id = invitations.org_id
@@ -249,9 +386,21 @@ CREATE POLICY "admin_creates_invitations" ON invitations
         AND role = 'admin'
     )
   );
-```
 
-O `org_id` ativo do usuário é resolvido via lookup em `org_members` — não armazenado no JWT, evitando staleness após troca de org.
+-- INSERT: somente admins criam convites
+CREATE POLICY "admin_insert_invitations" ON invitations
+  FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM org_members
+      WHERE org_id = invitations.org_id
+        AND user_id = auth.uid()
+        AND role = 'admin'
+    )
+  );
+
+-- UPDATE (marcar accepted_at): feito via SECURITY DEFINER function, sem policy de UPDATE pública
+```
 
 ---
 
@@ -276,7 +425,7 @@ Configurações
 | `/contacts` | Lista com busca (pg_trgm), filtros, criação inline |
 | `/contacts/[id]` | Perfil: dados, timeline de atividades, deals associados, tarefas |
 | `/companies` | Lista de empresas com busca e filtros |
-| `/companies/[id]` | Perfil: contatos vinculados, deals, atividades |
+| `/companies/[id]` | Perfil: contatos vinculados, deals, atividades, tarefas |
 | `/deals` | Kanban por stage (drag & drop) + view de lista |
 | `/deals/[id]` | Detalhe: valor, responsável, contato, timeline |
 | `/tasks` | Lista com filtro por vencimento e responsável |
@@ -292,6 +441,7 @@ Configurações
 - Drag & drop no kanban persiste `position` (float8) no banco — ordem sobrevive a page refresh
 - Toast notifications para feedback de todas as ações
 - Diálogo de confirmação ao deletar pipeline stage com deals ativos: "Mova os X deals para outro stage antes de continuar"
+- Deals com `stage_id = NULL` exibidos em coluna "Sem estágio" no kanban
 
 ### Dashboard — painéis e fontes de dados
 
@@ -319,9 +469,9 @@ Configurações
 
 | Tipo | Ferramenta | Cobertura |
 |------|-----------|-----------|
-| Unitários | Vitest | Lógica de negócio, validações Zod, cálculos de pipeline, Lexorank position |
-| E2E | Playwright | Criar contato, mover deal no kanban, criar tarefa, login/logout, fluxo de convite |
-| RLS | Supabase CLI | Verificar isolamento entre organizações; usuário A não acessa dados da org B |
+| Unitários | Vitest | Lógica de negócio, validações Zod, cálculos de pipeline, rebalanceamento float8 |
+| E2E | Playwright | Criar contato, mover deal no kanban, criar tarefa, login/logout, fluxo de convite completo |
+| RLS | Supabase CLI | Verificar isolamento entre organizações; usuário A não acessa dados da org B; admin vs member permissions |
 
 ---
 
@@ -334,6 +484,6 @@ Configurações
 - Integrações com ferramentas externas (Slack, Gmail, etc.)
 - Importação em massa via CSV
 - Mobile app
-- Subdomínios por organização (slug disponível no schema para uso futuro)
+- Subdomínios por organização (`slug` disponível no schema para uso futuro)
 
 Esses módulos podem ser adicionados em versões futuras após validação do MVP.
