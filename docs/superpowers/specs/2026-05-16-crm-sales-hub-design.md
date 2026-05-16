@@ -2,7 +2,7 @@
 
 **Data:** 2026-05-16  
 **Referência:** HubSpot Sales Hub  
-**Status:** Aprovado (revisado após 2 rounds de code review)
+**Status:** Aprovado (revisado após 5 rounds de code review)
 
 ---
 
@@ -89,7 +89,12 @@ CREATE INDEX companies_name_trgm  ON companies USING GIN (name  gin_trgm_ops);
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS moddatetime;
--- aplicar trigger em cada tabela: CREATE TRIGGER ... BEFORE UPDATE ON <table> ...
+
+-- Aplicar em cada tabela com updated_at (contacts, companies, deals, tasks, pipeline_stages, organizations, org_members, invitations):
+CREATE TRIGGER handle_updated_at
+  BEFORE UPDATE ON contacts
+  FOR EACH ROW EXECUTE FUNCTION moddatetime('updated_at');
+-- Repetir o mesmo padrão para cada tabela substituindo "contacts" pelo nome da tabela.
 ```
 
 ```sql
@@ -98,7 +103,7 @@ organizations
   name        text        NOT NULL
   slug        text        NOT NULL UNIQUE
   -- slug gerado a partir do nome; colisões resolvidas com sufixo aleatório
-  plan        text        NOT NULL DEFAULT 'free'
+  plan        text        NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'pro', 'enterprise'))
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -141,8 +146,9 @@ companies
   org_id      uuid        NOT NULL FK → organizations
   name        text        NOT NULL
   domain      text        NULL
+  -- domain não é único por org (intencionalmente — mesma empresa pode ter múltiplos registros em fase de deduplicação)
   industry    text        NULL
-  size        text        NULL  -- '1-10' | '11-50' | '51-200' | '200+'
+  size        text        NULL CHECK (size IN ('1-10', '11-50', '51-200', '200+') OR size IS NULL)
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -164,7 +170,7 @@ deals
   id          uuid        PK DEFAULT gen_random_uuid()
   org_id      uuid        NOT NULL FK → organizations
   title       text        NOT NULL
-  value       numeric     NULL
+  value       numeric(15,2) NULL
   stage_id    uuid        NULL FK → pipeline_stages ON DELETE RESTRICT
   -- stage_id NULL = deal sem stage ("Sem estágio"); exibido em coluna separada no kanban
   contact_id  uuid        NULL FK → contacts
@@ -180,6 +186,7 @@ deals
   -- posição no kanban dentro do stage; mesma estratégia de float8 do pipeline_stages
   -- application code sempre fornece o valor: MAX(position dentro do stage) + 1.0
   -- sem DEFAULT — forçar cálculo explícito na aplicação para evitar colisões de posição 0
+  -- Zod schema deve marcar position como required; Server Action deve calculá-lo antes do INSERT
   created_at  timestamptz NOT NULL DEFAULT now()
   updated_at  timestamptz NOT NULL DEFAULT now()
 
@@ -204,6 +211,7 @@ tasks
   due_date    timestamptz NULL
   done        boolean     NOT NULL DEFAULT false
   assigned_to uuid        NULL FK → auth.users
+  created_by  uuid        NOT NULL FK → auth.users
   contact_id  uuid        NULL FK → contacts
   company_id  uuid        NULL FK → companies
   deal_id     uuid        NULL FK → deals
@@ -229,6 +237,9 @@ CREATE INDEX ON org_members (user_id);
 -- invitations: filtragem por org_id nas policies de admin
 CREATE INDEX ON invitations (org_id);
 -- token já tem índice UNIQUE implícito
+
+-- invitations: previne convites duplicados para o mesmo email na mesma org
+CREATE UNIQUE INDEX ON invitations (org_id, email) WHERE accepted_at IS NULL;
 ```
 
 ---
@@ -271,7 +282,7 @@ $$;
 -- (exigido pelo linter do Supabase)
 ```
 
-Esta função é usada exclusivamente nas policies de `org_members`.
+Esta função é usada nas policies de `org_members` (onde a auto-referência causaria recursão infinita) e na policy `admin_update_org` de `organizations`.
 
 ### organizations
 
@@ -293,47 +304,65 @@ CREATE POLICY "admin_update_org" ON organizations
 -- Sem política de INSERT pública — bloqueado por default; signup flow usa service_role
 ```
 
-### Tabelas com dados de negócio (contacts, companies, deals, activities, tasks)
+### Tabelas com dados de negócio (contacts, companies, deals, tasks)
 
-> **Nota:** `pipeline_stages` tem policies próprias na seção abaixo; não aplicar o template genérico nela.
+> **Notas:**
+> - `pipeline_stages` tem policies próprias na seção abaixo; não aplicar o template genérico nela.
+> - `activities` é **append-only** (imutável): aplicar apenas SELECT e INSERT, **nunca UPDATE ou DELETE**.
+> - Todos os `org_members` devem ser qualificados como `public.org_members` para consistência.
 
 ```sql
 -- SELECT: membros da org leem seus próprios dados
 CREATE POLICY "select_own_org" ON <table>
   FOR SELECT
   USING (
-    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+    org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid())
   );
 
 -- INSERT: membro só insere em org da qual faz parte
 CREATE POLICY "insert_own_org" ON <table>
   FOR INSERT
   WITH CHECK (
-    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+    org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid())
   );
 
 -- UPDATE: membro só atualiza registros da própria org
+-- NÃO aplicar em activities (append-only)
 CREATE POLICY "update_own_org" ON <table>
   FOR UPDATE
   USING (
-    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+    org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid())
   )
   WITH CHECK (
-    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+    org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid())
   );
 
 -- DELETE: membro só deleta registros da própria org
+-- NÃO aplicar em activities (append-only)
 CREATE POLICY "delete_own_org" ON <table>
   FOR DELETE
   USING (
-    org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid())
+    org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid())
   );
+```
+
+### activities — append-only (SELECT + INSERT apenas)
+
+```sql
+-- SELECT e INSERT usam o template genérico acima
+-- Sem UPDATE policy — bloqueado por RLS default (intencional: activities são imutáveis)
+-- Sem DELETE policy — bloqueado por RLS default (intencional: activities são imutáveis)
 ```
 
 ### pipeline_stages — somente admins modificam
 
+> **Nota:** Os subqueries abaixo referenciam `public.org_members` diretamente (não via `is_org_admin()`).
+> Isso é seguro porque a policy é em `pipeline_stages`, não em `org_members` — não há recursão.
+> O subquery é filtrado pela policy `select_own_memberships` de `org_members` (`user_id = auth.uid()`),
+> retornando apenas a linha do usuário atual — que é exatamente o comportamento desejado.
+
 ```sql
--- SELECT: todos os membros da org (não usa o template genérico — tem policies próprias)
+-- SELECT: todos os membros da org
 CREATE POLICY "select_stages" ON pipeline_stages
   FOR SELECT
   USING (org_id IN (SELECT org_id FROM public.org_members WHERE user_id = auth.uid()));
@@ -343,7 +372,7 @@ CREATE POLICY "admin_insert_stages" ON pipeline_stages
   FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM org_members
+      SELECT 1 FROM public.org_members
       WHERE org_id = pipeline_stages.org_id
         AND user_id = auth.uid()
         AND role = 'admin'
@@ -354,7 +383,7 @@ CREATE POLICY "admin_update_stages" ON pipeline_stages
   FOR UPDATE
   USING (
     EXISTS (
-      SELECT 1 FROM org_members
+      SELECT 1 FROM public.org_members
       WHERE org_id = pipeline_stages.org_id
         AND user_id = auth.uid()
         AND role = 'admin'
@@ -362,7 +391,7 @@ CREATE POLICY "admin_update_stages" ON pipeline_stages
   )
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM org_members
+      SELECT 1 FROM public.org_members
       WHERE org_id = pipeline_stages.org_id
         AND user_id = auth.uid()
         AND role = 'admin'
@@ -373,7 +402,7 @@ CREATE POLICY "admin_delete_stages" ON pipeline_stages
   FOR DELETE
   USING (
     EXISTS (
-      SELECT 1 FROM org_members
+      SELECT 1 FROM public.org_members
       WHERE org_id = pipeline_stages.org_id
         AND user_id = auth.uid()
         AND role = 'admin'
@@ -411,6 +440,31 @@ CREATE POLICY "admin_delete_members" ON org_members
   USING (is_org_admin(org_members.org_id));
 ```
 
+**Proteção contra remoção do último admin:**
+
+Uma `SECURITY DEFINER` function `ensure_org_has_admin` deve ser chamada via trigger `BEFORE UPDATE OR DELETE` em `org_members`. Se a operação resultaria em zero admins na org, a function executa `RAISE EXCEPTION 'A organização precisa de pelo menos um administrador'`. A UI também deve desabilitar o botão de remoção/rebaixamento nesses casos, mas o trigger é a camada de enforcement definitiva.
+
+```sql
+CREATE OR REPLACE FUNCTION ensure_org_has_admin()
+RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public AS $$
+BEGIN
+  IF (TG_OP = 'DELETE' AND OLD.role = 'admin') OR
+     (TG_OP = 'UPDATE' AND OLD.role = 'admin' AND NEW.role != 'admin') THEN
+    IF (SELECT COUNT(*) FROM public.org_members
+        WHERE org_id = OLD.org_id AND role = 'admin') <= 1 THEN
+      RAISE EXCEPTION 'A organização precisa de pelo menos um administrador';
+    END IF;
+  END IF;
+  RETURN COALESCE(NEW, OLD);
+END;
+$$;
+
+CREATE TRIGGER protect_last_admin
+  BEFORE UPDATE OR DELETE ON org_members
+  FOR EACH ROW EXECUTE FUNCTION ensure_org_has_admin();
+```
+
 ### invitations
 
 ```sql
@@ -423,7 +477,7 @@ CREATE POLICY "admin_select_invitations" ON invitations
   FOR SELECT
   USING (
     EXISTS (
-      SELECT 1 FROM org_members
+      SELECT 1 FROM public.org_members
       WHERE org_id = invitations.org_id
         AND user_id = auth.uid()
         AND role = 'admin'
@@ -431,11 +485,12 @@ CREATE POLICY "admin_select_invitations" ON invitations
   );
 
 -- INSERT: somente admins criam convites
+-- O índice parcial UNIQUE (org_id, email) WHERE accepted_at IS NULL garante sem duplicatas
 CREATE POLICY "admin_insert_invitations" ON invitations
   FOR INSERT
   WITH CHECK (
     EXISTS (
-      SELECT 1 FROM org_members
+      SELECT 1 FROM public.org_members
       WHERE org_id = invitations.org_id
         AND user_id = auth.uid()
         AND role = 'admin'
@@ -485,7 +540,8 @@ Configurações
 | `/deals` | Kanban por stage (drag & drop) + view de lista |
 | `/deals/[id]` | Detalhe: valor, responsável, contato, timeline |
 | `/tasks` | Lista com filtro por vencimento e responsável |
-| `/settings/members` | Membros da org, envio de convites |
+| `/settings/org` | Nome e slug da organização (somente admins) |
+| `/settings/members` | Membros da org, envio e revogação de convites |
 | `/settings/pipeline` | Stages customizáveis (criar, reordenar, deletar) |
 | `/settings/profile` | Perfil do usuário |
 | `/invite/[token]` | Landing page de convite |
