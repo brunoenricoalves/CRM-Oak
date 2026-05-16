@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl -s \"https://ui.shadcn.com/r/styles/default/form.json\")",
+      "Bash(git -C /Users/brunoalves/CRM add src/components/ui/form.tsx)",
+      "Bash(git -C /Users/brunoalves/CRM commit -m ' *)",
+      "Bash(git -C /Users/brunoalves/CRM log --oneline)",
+      "Bash(git *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('zod:', d['dependencies'].get\\('zod'\\)\\); print\\('lucide-react:', d['dependencies'].get\\('lucide-react'\\)\\); print\\('@base-ui/react:', d['dependencies'].get\\('@base-ui/react'\\)\\); print\\('sonner:', d['dependencies'].get\\('sonner'\\)\\); print\\('@supabase/ssr:', d['dependencies'].get\\('@supabase/ssr'\\)\\)\")",
+      "Bash(npm info *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d.get\\('exports', {}\\), indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('peerDeps:', json.dumps\\(d.get\\('peerDependencies',{}\\), indent=2\\)\\); print\\('version:', d.get\\('version'\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); exports=d.get\\('exports',{}\\); css=exports.get\\('./tailwind.css',{}\\); print\\(json.dumps\\(css, indent=2\\)\\)\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('desc:', d.get\\('description',''\\)\\); print\\('main:', d.get\\('main',''\\)\\)\")",
+      "Bash(node *)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('types:', d.get\\('compilerOptions',{}\\).get\\('types', 'NOT SET'\\)\\)\")",
+      "Bash(python3 *)",
+      "Skill(supabase:supabase)",
+      "Bash(npm install *)",
+      "Bash(npx supabase *)",
+      "Bash(grep -A 20 \"^\\\\[auth\\\\]$\" /Users/brunoalves/CRM/supabase/config.toml)",
+      "Bash(env)",
+      "Bash(npm run *)"
+    ]
+  }
+}
