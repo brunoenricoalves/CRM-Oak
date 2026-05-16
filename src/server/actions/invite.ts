@@ -24,12 +24,13 @@ export async function sendInvite(orgId: string, formData: FormData) {
   if (error) return { error: error.message }
 
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`
-  await resend.emails.send({
+  const { error: emailError } = await resend.emails.send({
     from: 'CRM <noreply@oakagencia.com.br>',
     to: parsed.data.email,
     subject: 'Você foi convidado para um CRM',
     html: `<p>Clique para aceitar o convite: <a href="${inviteUrl}">${inviteUrl}</a></p>`,
   })
+  if (emailError) return { error: emailError.message }
 
   return { success: true }
 }
