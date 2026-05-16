@@ -16,7 +16,7 @@ export async function sendInvite(orgId: string, formData: FormData) {
 
   const supabase = await createClient()
 
-  const { data: token, error } = await (supabase as any).rpc('create_invitation', {
+  const { data: token, error } = await supabase.rpc('create_invitation', {
     p_org_id: orgId,
     p_email: parsed.data.email,
     p_role: parsed.data.role,
@@ -38,7 +38,7 @@ export async function sendInvite(orgId: string, formData: FormData) {
 export async function acceptInvite(token: string): Promise<void> {
   const supabase = await createClient()
 
-  const { error } = await (supabase as any).rpc('accept_invitation', {
+  const { error } = await supabase.rpc('accept_invitation', {
     p_token: token,
   })
   if (error) {

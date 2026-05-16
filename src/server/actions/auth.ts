@@ -41,8 +41,7 @@ export async function signup(formData: FormData) {
   // 2. Criar org via SECURITY DEFINER function (bypassa RLS)
   const admin = createAdminClient()
   const slug = generateSlug(parsed.data.orgName)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { error: orgError } = await (admin as any).rpc('create_org_and_admin', {
+  const { error: orgError } = await admin.rpc('create_org_and_admin', {
     p_name: parsed.data.orgName,
     p_slug: slug,
     p_user_id: authData.user.id,

@@ -12,7 +12,7 @@ export default async function InvitePage({ params }: Props) {
   const { token } = await params
   const supabase = await createClient()
 
-  const { data: invite } = await (supabase as any).rpc('get_invitation_by_token', { p_token: token })
+  const { data: invite } = await supabase.rpc('get_invitation_by_token', { p_token: token })
 
   if (!invite || invite.length === 0) {
     redirect('/login?error=invite_invalid')
