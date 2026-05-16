@@ -14,7 +14,11 @@ describe('generateSlug', () => {
     expect(generateSlug('foo  bar')).toBe('foo-bar')
   })
 
-  it('remove hífens no início e fim', () => {
+  it('remove espaços no início e fim', () => {
     expect(generateSlug(' foo ')).toBe('foo')
+  })
+
+  it('remove hífens no início e fim', () => {
+    expect(generateSlug('-foo-')).toBe('foo')
   })
 })

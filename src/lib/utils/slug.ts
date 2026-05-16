@@ -7,4 +7,5 @@ export function generateSlug(text: string): string {
     .trim()
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }

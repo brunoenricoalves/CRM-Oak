@@ -1,3 +1,5 @@
 export function isTokenExpired(expiresAt: string): boolean {
-  return new Date(expiresAt) < new Date()
+  const expiry = new Date(expiresAt)
+  if (isNaN(expiry.getTime())) throw new Error(`Invalid expiresAt: ${expiresAt}`)
+  return expiry < new Date()
 }
