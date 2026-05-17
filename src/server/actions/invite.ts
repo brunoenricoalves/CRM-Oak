@@ -3,10 +3,6 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { inviteSchema } from '@/lib/validations/invite'
-import { Resend } from 'resend'
-
-const resend = new Resend(process.env.RESEND_API_KEY)
-
 export async function sendInvite(orgId: string, formData: FormData) {
   const parsed = inviteSchema.safeParse({
     email: formData.get('email'),
@@ -23,6 +19,8 @@ export async function sendInvite(orgId: string, formData: FormData) {
   })
   if (error) return { error: error.message }
 
+  const { Resend } = await import('resend')
+  const resend = new Resend(process.env.RESEND_API_KEY)
   const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/invite/${token}`
   const { error: emailError } = await resend.emails.send({
     from: 'CRM <noreply@oakagencia.com.br>',
