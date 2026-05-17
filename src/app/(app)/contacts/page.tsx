@@ -1,22 +1,33 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
 import { buttonVariants } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { SearchInput } from '@/components/ui/search-input'
 
-export default async function ContactsPage() {
+interface Props {
+  searchParams: Promise<{ q?: string }>
+}
+
+export default async function ContactsPage({ searchParams }: Props) {
+  const { q } = await searchParams
   const orgId = await getActiveOrgId()
   const supabase = await createClient()
 
-  const { data: contacts } = await supabase
+  let query = supabase
     .from('contacts')
     .select('id, name, email, phone, updated_at, companies(name)')
     .eq('org_id', orgId!)
     .order('name')
 
+  if (q) query = query.ilike('name', `%${q}%`)
+
+  const { data: contacts } = await query
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-slate-900">Contatos</h1>
         <Link href="/contacts/new" className={buttonVariants()}>
           <Plus className="w-4 h-4 mr-2" />
@@ -24,11 +35,19 @@ export default async function ContactsPage() {
         </Link>
       </div>
 
+      <div className="mb-4">
+        <Suspense>
+          <SearchInput placeholder="Buscar contatos..." defaultValue={q} />
+        </Suspense>
+      </div>
+
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         {!contacts || contacts.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
-            <p className="text-lg font-medium">Nenhum contato ainda</p>
-            <p className="text-sm mt-1">Crie seu primeiro contato para começar</p>
+            <p className="text-lg font-medium">
+              {q ? `Nenhum contato encontrado para "${q}"` : 'Nenhum contato ainda'}
+            </p>
+            {!q && <p className="text-sm mt-1">Crie seu primeiro contato para começar</p>}
           </div>
         ) : (
           <table className="w-full text-sm">

@@ -1,22 +1,33 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
 import { buttonVariants } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
+import { SearchInput } from '@/components/ui/search-input'
 
-export default async function CompaniesPage() {
+interface Props {
+  searchParams: Promise<{ q?: string }>
+}
+
+export default async function CompaniesPage({ searchParams }: Props) {
+  const { q } = await searchParams
   const orgId = await getActiveOrgId()
   const supabase = await createClient()
 
-  const { data: companies } = await supabase
+  let query = supabase
     .from('companies')
     .select('id, name, domain, industry, size')
     .eq('org_id', orgId!)
     .order('name')
 
+  if (q) query = query.ilike('name', `%${q}%`)
+
+  const { data: companies } = await query
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-slate-900">Empresas</h1>
         <Link href="/companies/new" className={buttonVariants()}>
           <Plus className="w-4 h-4 mr-2" />
@@ -24,11 +35,19 @@ export default async function CompaniesPage() {
         </Link>
       </div>
 
+      <div className="mb-4">
+        <Suspense>
+          <SearchInput placeholder="Buscar empresas..." defaultValue={q} />
+        </Suspense>
+      </div>
+
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         {!companies || companies.length === 0 ? (
           <div className="p-12 text-center text-slate-500">
-            <p className="text-lg font-medium">Nenhuma empresa ainda</p>
-            <p className="text-sm mt-1">Cadastre sua primeira empresa para começar</p>
+            <p className="text-lg font-medium">
+              {q ? `Nenhuma empresa encontrada para "${q}"` : 'Nenhuma empresa ainda'}
+            </p>
+            {!q && <p className="text-sm mt-1">Cadastre sua primeira empresa para começar</p>}
           </div>
         ) : (
           <table className="w-full text-sm">
