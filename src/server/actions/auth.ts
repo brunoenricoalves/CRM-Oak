@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { signupSchema, loginSchema } from '@/lib/validations/auth'
@@ -14,6 +15,21 @@ export async function login(formData: FormData) {
   const supabase = await createClient()
   const { error } = await supabase.auth.signInWithPassword(parsed.data)
   if (error) return { error: 'Email ou senha inválidos' }
+
+  const { data: memberships } = await supabase
+    .from('org_members')
+    .select('org_id')
+    .limit(1)
+
+  if (memberships && memberships.length > 0) {
+    const cookieStore = await cookies()
+    cookieStore.set('active_org_id', memberships[0].org_id, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+    })
+  }
 
   redirect('/dashboard')
 }
@@ -30,7 +46,6 @@ export async function signup(formData: FormData) {
 
   const supabase = await createClient()
 
-  // 1. Criar usuário no Supabase Auth
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email: parsed.data.email,
     password: parsed.data.password,
@@ -38,15 +53,24 @@ export async function signup(formData: FormData) {
   })
   if (authError || !authData.user) return { error: authError?.message ?? 'Erro ao criar conta' }
 
-  // 2. Criar org via SECURITY DEFINER function (bypassa RLS)
   const admin = createAdminClient()
   const slug = generateSlug(parsed.data.orgName)
-  const { error: orgError } = await admin.rpc('create_org_and_admin', {
+  const { data: orgId, error: orgError } = await admin.rpc('create_org_and_admin', {
     p_name: parsed.data.orgName,
     p_slug: slug,
     p_user_id: authData.user.id,
   })
   if (orgError) return { error: 'Erro ao criar organização' }
+
+  if (orgId) {
+    const cookieStore = await cookies()
+    cookieStore.set('active_org_id', orgId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 30,
+    })
+  }
 
   redirect('/dashboard')
 }
@@ -54,5 +78,7 @@ export async function signup(formData: FormData) {
 export async function logout() {
   const supabase = await createClient()
   await supabase.auth.signOut()
+  const cookieStore = await cookies()
+  cookieStore.delete('active_org_id')
   redirect('/login')
 }
