@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
-import { deleteDeal } from '@/server/actions/deal'
+import { deleteDeal, closeDeal, reopenDeal } from '@/server/actions/deal'
 import { ActivityFeed } from '@/components/activities/activity-feed'
 import { ActivityForm } from '@/components/activities/activity-form'
 import { Button, buttonVariants } from '@/components/ui/button'
@@ -61,7 +61,28 @@ export default async function DealDetailPage({ params }: Props) {
             </Badge>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {deal.status === 'open' && (
+            <>
+              <form action={closeDeal.bind(null, id, 'won')}>
+                <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" type="submit">
+                  Ganho ✓
+                </Button>
+              </form>
+              <form action={closeDeal.bind(null, id, 'lost')}>
+                <Button variant="outline" size="sm" type="submit" className="text-red-600 border-red-200 hover:bg-red-50">
+                  Perdido ✗
+                </Button>
+              </form>
+            </>
+          )}
+          {deal.status !== 'open' && (
+            <form action={reopenDeal.bind(null, id)}>
+              <Button variant="outline" size="sm" type="submit">
+                Reabrir
+              </Button>
+            </form>
+          )}
           <Link
             href={`/deals/${id}/edit`}
             className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}

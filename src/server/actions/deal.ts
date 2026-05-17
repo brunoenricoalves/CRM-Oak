@@ -139,6 +139,38 @@ export async function moveDeal(
   return { success: true }
 }
 
+export async function closeDeal(id: string, status: 'won' | 'lost'): Promise<void> {
+  const orgId = await getActiveOrgId()
+  if (!orgId) return
+
+  const supabase = await createClient()
+  await supabase
+    .from('deals')
+    .update({ status, closed_at: new Date().toISOString() })
+    .eq('id', id)
+    .eq('org_id', orgId)
+
+  revalidatePath(`/deals/${id}`)
+  revalidatePath('/deals')
+  revalidatePath('/dashboard')
+}
+
+export async function reopenDeal(id: string): Promise<void> {
+  const orgId = await getActiveOrgId()
+  if (!orgId) return
+
+  const supabase = await createClient()
+  await supabase
+    .from('deals')
+    .update({ status: 'open', closed_at: null })
+    .eq('id', id)
+    .eq('org_id', orgId)
+
+  revalidatePath(`/deals/${id}`)
+  revalidatePath('/deals')
+  revalidatePath('/dashboard')
+}
+
 export async function deleteDeal(id: string): Promise<void> {
   const orgId = await getActiveOrgId()
   if (!orgId) redirect('/deals')
