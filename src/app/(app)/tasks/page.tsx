@@ -3,8 +3,9 @@ import { getActiveOrgId } from '@/lib/org'
 import { toggleTask, deleteTask } from '@/server/actions/task'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckSquare, Square, Trash2 } from 'lucide-react'
+import { CheckSquare, Square, Trash2, Pencil } from 'lucide-react'
 import Link from 'next/link'
+import { cn } from '@/lib/utils'
 
 export default async function TasksPage() {
   const orgId = await getActiveOrgId()
@@ -64,14 +65,22 @@ export default async function TasksPage() {
                 )}
               </div>
             </div>
-            <form action={deleteTask.bind(null, task.id)}>
-              <button
-                type="submit"
-                className="text-slate-300 hover:text-red-500 transition-colors"
+            <div className="flex gap-1 shrink-0">
+              <Link
+                href={`/tasks/${task.id}/edit`}
+                className={cn(buttonVariants({ variant: 'ghost', size: 'sm' }), 'h-8 w-8 p-0 text-slate-400 hover:text-slate-600')}
               >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </form>
+                <Pencil className="w-4 h-4" />
+              </Link>
+              <form action={deleteTask.bind(null, task.id)}>
+                <button
+                  type="submit"
+                  className="h-8 w-8 flex items-center justify-center text-slate-300 hover:text-red-500 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </form>
+            </div>
           </div>
         ))}
 
