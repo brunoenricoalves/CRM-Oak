@@ -4,10 +4,11 @@ import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { createContact } from '@/server/actions/contact'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { cn } from '@/lib/utils'
 
 function SubmitButton() {
   const { pending } = useFormStatus()
@@ -53,9 +54,9 @@ export default function NewContactPage() {
             </div>
             <div className="flex gap-3 pt-2">
               <SubmitButton />
-              <Button variant="outline" asChild>
-                <Link href="/contacts">Cancelar</Link>
-              </Button>
+              <Link href="/contacts" className={cn(buttonVariants({ variant: 'outline' }))}>
+                Cancelar
+              </Link>
             </div>
           </form>
         </CardContent>

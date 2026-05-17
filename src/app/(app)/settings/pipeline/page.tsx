@@ -1,12 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
-import { createStage, deleteStage } from '@/server/actions/settings'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { deleteStage } from '@/server/actions/settings'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trash2 } from 'lucide-react'
 import Link from 'next/link'
+import { StageForm } from './stage-form'
 
 export default async function PipelineSettingsPage() {
   const orgId = await getActiveOrgId()
@@ -58,30 +56,7 @@ export default async function PipelineSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Nova etapa</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={createStage.bind(null, null)} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="name">Nome da etapa *</Label>
-              <Input id="name" name="name" required placeholder="Ex: Qualificação" />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="color">Cor</Label>
-              <input
-                id="color"
-                name="color"
-                type="color"
-                defaultValue="#3b82f6"
-                className="h-9 w-20 rounded-md border border-slate-200 cursor-pointer"
-              />
-            </div>
-            <Button type="submit">Adicionar etapa</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <StageForm />
     </div>
   )
 }

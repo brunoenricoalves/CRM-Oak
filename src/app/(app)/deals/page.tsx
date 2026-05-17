@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { KanbanBoard } from '@/components/deals/kanban-board'
 import { Plus } from 'lucide-react'
 
@@ -27,12 +27,10 @@ export default async function DealsPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Negócios</h1>
-        <Button asChild>
-          <Link href="/deals/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Novo negócio
-          </Link>
-        </Button>
+        <Link href="/deals/new" className={buttonVariants()}>
+          <Plus className="w-4 h-4 mr-2" />
+          Novo negócio
+        </Link>
       </div>
 
       {!stages || stages.length === 0 ? (

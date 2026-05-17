@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
 import { toggleTask, deleteTask } from '@/server/actions/task'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { CheckSquare, Square, Trash2 } from 'lucide-react'
 import Link from 'next/link'
@@ -24,9 +24,9 @@ export default async function TasksPage() {
     <div className="max-w-2xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Tarefas</h1>
-        <Button asChild>
-          <Link href="/tasks/new">Nova tarefa</Link>
-        </Button>
+        <Link href="/tasks/new" className={buttonVariants()}>
+          Nova tarefa
+        </Link>
       </div>
 
       <div className="space-y-2">

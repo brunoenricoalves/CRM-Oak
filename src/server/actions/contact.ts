@@ -27,16 +27,14 @@ export async function createContact(_prev: unknown, formData: FormData) {
   } = await supabase.auth.getUser()
   if (!user) return { error: 'Não autenticado' }
 
-  const insert: Record<string, string> = {
+  const { error } = await supabase.from('contacts').insert({
     name: parsed.data.name,
     org_id: orgId,
     owner_id: parsed.data.owner_id || user.id,
-  }
-  if (parsed.data.email) insert.email = parsed.data.email
-  if (parsed.data.phone) insert.phone = parsed.data.phone
-  if (parsed.data.company_id) insert.company_id = parsed.data.company_id
-
-  const { error } = await supabase.from('contacts').insert(insert)
+    email: parsed.data.email || null,
+    phone: parsed.data.phone || null,
+    company_id: parsed.data.company_id || null,
+  })
   if (error) return { error: error.message }
 
   revalidatePath('/contacts')
@@ -59,14 +57,14 @@ export async function updateContact(_prev: unknown, formData: FormData) {
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
-  const update: Record<string, string | null> = { name: parsed.data.name }
-  update.email = parsed.data.email || null
-  update.phone = parsed.data.phone || null
-  update.company_id = parsed.data.company_id || null
-
   const { error } = await supabase
     .from('contacts')
-    .update(update)
+    .update({
+      name: parsed.data.name,
+      email: parsed.data.email || null,
+      phone: parsed.data.phone || null,
+      company_id: parsed.data.company_id || null,
+    })
     .eq('id', id)
     .eq('org_id', orgId)
   if (error) return { error: error.message }
@@ -76,17 +74,12 @@ export async function updateContact(_prev: unknown, formData: FormData) {
   redirect(`/contacts/${id}`)
 }
 
-export async function deleteContact(id: string) {
+export async function deleteContact(id: string): Promise<void> {
   const orgId = await getActiveOrgId()
-  if (!orgId) return { error: 'Sem organização ativa' }
+  if (!orgId) redirect('/contacts')
 
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('contacts')
-    .delete()
-    .eq('id', id)
-    .eq('org_id', orgId)
-  if (error) return { error: error.message }
+  await supabase.from('contacts').delete().eq('id', id).eq('org_id', orgId)
 
   revalidatePath('/contacts')
   redirect('/contacts')

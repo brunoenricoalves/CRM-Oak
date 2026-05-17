@@ -5,9 +5,10 @@ import { getActiveOrgId } from '@/lib/org'
 import { deleteContact } from '@/server/actions/contact'
 import { ActivityFeed } from '@/components/activities/activity-feed'
 import { ActivityForm } from '@/components/activities/activity-form'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Trash2, Pencil } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -39,12 +40,13 @@ export default async function ContactDetailPage({ params }: Props) {
           <h1 className="text-2xl font-bold text-slate-900 mt-1">{contact.name}</h1>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/contacts/${id}/edit`}>
-              <Pencil className="w-4 h-4 mr-1" />
-              Editar
-            </Link>
-          </Button>
+          <Link
+            href={`/contacts/${id}/edit`}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Editar
+          </Link>
           <form action={deleteContact.bind(null, id)}>
             <Button
               variant="outline"

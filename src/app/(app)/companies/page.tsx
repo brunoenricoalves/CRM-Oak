@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
-import { Button } from '@/components/ui/button'
+import { buttonVariants } from '@/components/ui/button'
 import { Plus } from 'lucide-react'
 
 export default async function CompaniesPage() {
@@ -18,12 +18,10 @@ export default async function CompaniesPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Empresas</h1>
-        <Button asChild>
-          <Link href="/companies/new">
-            <Plus className="w-4 h-4 mr-2" />
-            Nova empresa
-          </Link>
-        </Button>
+        <Link href="/companies/new" className={buttonVariants()}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nova empresa
+        </Link>
       </div>
 
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">

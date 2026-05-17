@@ -5,10 +5,11 @@ import { getActiveOrgId } from '@/lib/org'
 import { deleteDeal } from '@/server/actions/deal'
 import { ActivityFeed } from '@/components/activities/activity-feed'
 import { ActivityForm } from '@/components/activities/activity-form'
-import { Button } from '@/components/ui/button'
+import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Trash2, Pencil } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -61,12 +62,13 @@ export default async function DealDetailPage({ params }: Props) {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`/deals/${id}/edit`}>
-              <Pencil className="w-4 h-4 mr-1" />
-              Editar
-            </Link>
-          </Button>
+          <Link
+            href={`/deals/${id}/edit`}
+            className={cn(buttonVariants({ variant: 'outline', size: 'sm' }))}
+          >
+            <Pencil className="w-4 h-4 mr-1" />
+            Editar
+          </Link>
           <form action={deleteDeal.bind(null, id)}>
             <Button
               variant="outline"

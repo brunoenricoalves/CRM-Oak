@@ -44,20 +44,18 @@ export async function createDeal(_prev: unknown, formData: FormData) {
   const positions = existing?.map((d) => d.position) ?? []
   const position = getInsertPosition(positions)
 
-  const insert: Record<string, unknown> = {
+  const { error } = await supabase.from('deals').insert({
     title: parsed.data.title,
     org_id: orgId,
     owner_id: user.id,
     position,
     status: 'open',
-  }
-  if (parsed.data.value !== undefined) insert.value = parsed.data.value
-  if (parsed.data.stage_id) insert.stage_id = parsed.data.stage_id
-  if (parsed.data.contact_id) insert.contact_id = parsed.data.contact_id
-  if (parsed.data.company_id) insert.company_id = parsed.data.company_id
-  if (parsed.data.close_date) insert.close_date = parsed.data.close_date
-
-  const { error } = await supabase.from('deals').insert(insert)
+    value: parsed.data.value ?? null,
+    stage_id: parsed.data.stage_id || null,
+    contact_id: parsed.data.contact_id || null,
+    company_id: parsed.data.company_id || null,
+    close_date: parsed.data.close_date || null,
+  })
   if (error) return { error: error.message }
 
   revalidatePath('/deals')
@@ -82,16 +80,18 @@ export async function updateDeal(_prev: unknown, formData: FormData) {
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
-  const update: Record<string, unknown> = {
-    title: parsed.data.title,
-    value: parsed.data.value ?? null,
-    stage_id: parsed.data.stage_id || null,
-    contact_id: parsed.data.contact_id || null,
-    company_id: parsed.data.company_id || null,
-    close_date: parsed.data.close_date || null,
-  }
-
-  const { error } = await supabase.from('deals').update(update).eq('id', id).eq('org_id', orgId)
+  const { error } = await supabase
+    .from('deals')
+    .update({
+      title: parsed.data.title,
+      value: parsed.data.value ?? null,
+      stage_id: parsed.data.stage_id || null,
+      contact_id: parsed.data.contact_id || null,
+      company_id: parsed.data.company_id || null,
+      close_date: parsed.data.close_date || null,
+    })
+    .eq('id', id)
+    .eq('org_id', orgId)
   if (error) return { error: error.message }
 
   revalidatePath(`/deals/${id}`)
@@ -139,13 +139,12 @@ export async function moveDeal(
   return { success: true }
 }
 
-export async function deleteDeal(id: string) {
+export async function deleteDeal(id: string): Promise<void> {
   const orgId = await getActiveOrgId()
-  if (!orgId) return { error: 'Sem organização ativa' }
+  if (!orgId) redirect('/deals')
 
   const supabase = await createClient()
-  const { error } = await supabase.from('deals').delete().eq('id', id).eq('org_id', orgId)
-  if (error) return { error: error.message }
+  await supabase.from('deals').delete().eq('id', id).eq('org_id', orgId)
 
   revalidatePath('/deals')
   redirect('/deals')

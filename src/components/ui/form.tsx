@@ -107,6 +107,7 @@ const FormControl = React.forwardRef<
 >(({ children, ...props }, ref) => {
   const { error, formItemId, formDescriptionId } = useFormField()
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return React.cloneElement(children, {
     ref,
     id: formItemId,
@@ -115,7 +116,7 @@ const FormControl = React.forwardRef<
       : `${formDescriptionId} ${formItemId}-error`,
     'aria-invalid': !!error,
     ...props,
-  })
+  } as any)
 })
 FormControl.displayName = "FormControl"
 

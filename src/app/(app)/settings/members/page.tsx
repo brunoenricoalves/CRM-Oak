@@ -1,11 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
-import { sendInvite } from '@/server/actions/invite'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { InviteForm } from './invite-form'
 import Link from 'next/link'
 
 export default async function MembersSettingsPage() {
@@ -48,38 +45,7 @@ export default async function MembersSettingsPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Convidar membro</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={sendInvite.bind(null, orgId!)} className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="email">Email *</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                required
-                placeholder="nome@empresa.com"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="role">Papel</Label>
-              <select
-                id="role"
-                name="role"
-                className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-                defaultValue="member"
-              >
-                <option value="member">Membro</option>
-                <option value="admin">Admin</option>
-              </select>
-            </div>
-            <Button type="submit">Enviar convite</Button>
-          </form>
-        </CardContent>
-      </Card>
+      <InviteForm />
     </div>
   )
 }

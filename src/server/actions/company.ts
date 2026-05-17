@@ -21,12 +21,13 @@ export async function createCompany(_prev: unknown, formData: FormData) {
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const supabase = await createClient()
-  const insert: Record<string, string> = { name: parsed.data.name, org_id: orgId }
-  if (parsed.data.domain) insert.domain = parsed.data.domain
-  if (parsed.data.industry) insert.industry = parsed.data.industry
-  if (parsed.data.size) insert.size = parsed.data.size
-
-  const { error } = await supabase.from('companies').insert(insert)
+  const { error } = await supabase.from('companies').insert({
+    name: parsed.data.name,
+    org_id: orgId,
+    domain: parsed.data.domain || null,
+    industry: parsed.data.industry || null,
+    size: parsed.data.size || null,
+  })
   if (error) return { error: error.message }
 
   revalidatePath('/companies')
@@ -67,17 +68,12 @@ export async function updateCompany(_prev: unknown, formData: FormData) {
   redirect(`/companies/${id}`)
 }
 
-export async function deleteCompany(id: string) {
+export async function deleteCompany(id: string): Promise<void> {
   const orgId = await getActiveOrgId()
-  if (!orgId) return { error: 'Sem organização ativa' }
+  if (!orgId) redirect('/companies')
 
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('companies')
-    .delete()
-    .eq('id', id)
-    .eq('org_id', orgId)
-  if (error) return { error: error.message }
+  await supabase.from('companies').delete().eq('id', id).eq('org_id', orgId)
 
   revalidatePath('/companies')
   redirect('/companies')
