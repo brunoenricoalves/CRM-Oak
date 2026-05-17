@@ -4,21 +4,32 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { redirect } from 'next/navigation'
 
+export const dynamic = 'force-dynamic'
+
 interface Props {
   params: Promise<{ token: string }>
 }
 
 export default async function InvitePage({ params }: Props) {
   const { token } = await params
-  const supabase = await createClient()
 
-  const { data: invite } = await supabase.rpc('get_invitation_by_token', { p_token: token })
+  let inv: { org_name: string; role: string } | null = null
 
-  if (!invite || invite.length === 0) {
+  try {
+    const supabase = await createClient()
+    const { data: invite, error } = await supabase.rpc('get_invitation_by_token', { p_token: token })
+    if (error || !invite || invite.length === 0) {
+      redirect('/login?error=invite_invalid')
+    }
+    inv = invite[0]
+  } catch (err: unknown) {
+    // rethrow Next.js redirect/notFound errors
+    const message = err instanceof Error ? err.message : ''
+    if (message.includes('NEXT_REDIRECT') || message.includes('NEXT_NOT_FOUND')) throw err
     redirect('/login?error=invite_invalid')
   }
 
-  const inv = invite[0]
+  if (!inv) redirect('/login?error=invite_invalid')
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-50">
