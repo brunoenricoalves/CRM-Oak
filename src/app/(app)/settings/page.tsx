@@ -42,6 +42,22 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </Link>
+        <Link href="/settings/tags" className="block">
+          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
+            <CardContent className="p-4">
+              <p className="font-medium">Tags</p>
+              <p className="text-sm text-slate-500">Crie tags para classificar registros</p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/settings/custom-fields" className="block">
+          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
+            <CardContent className="p-4">
+              <p className="font-medium">Campos personalizados</p>
+              <p className="text-sm text-slate-500">Adicione campos customizados aos seus registros</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <Card>

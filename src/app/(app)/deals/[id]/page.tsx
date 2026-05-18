@@ -7,6 +7,8 @@ import { ActivityFeed } from '@/components/activities/activity-feed'
 import { ActivityForm } from '@/components/activities/activity-form'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TagPicker } from '@/components/tags/tag-picker'
+import { CustomFieldDisplay } from '@/components/custom-fields/custom-field-display'
 import { Pencil, Trash2, DollarSign, Calendar, User, Building2, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -22,7 +24,21 @@ export default async function DealDetailPage({ params }: Props) {
   const orgId = await getActiveOrgId()
   const supabase = await createClient()
 
-  const [{ data: deal }, { data: stages }] = await Promise.all([
+  const fieldDefsQuery = await supabase
+    .from('custom_field_defs')
+    .select('id')
+    .eq('org_id', orgId!)
+    .eq('entity_type', 'deal')
+  const fieldDefIds = fieldDefsQuery.data?.map((f) => f.id) ?? []
+
+  const [
+    { data: deal },
+    { data: stages },
+    { data: allTags },
+    { data: dealTagRows },
+    { data: fieldDefs },
+    { data: fieldValues },
+  ] = await Promise.all([
     supabase
       .from('deals')
       .select('id, title, value, status, close_date, stage_id, contacts(id, name), companies(id, name), pipeline_stages(name)')
@@ -34,6 +50,17 @@ export default async function DealDetailPage({ params }: Props) {
       .select('id, name, position')
       .eq('org_id', orgId!)
       .order('position'),
+    supabase.from('tags').select('id, name, color').eq('org_id', orgId!).order('name'),
+    supabase.from('deal_tags').select('tag_id, tags(id, name, color)').eq('deal_id', id),
+    supabase
+      .from('custom_field_defs')
+      .select('id, name, field_type, options')
+      .eq('org_id', orgId!)
+      .eq('entity_type', 'deal')
+      .order('position'),
+    fieldDefIds.length > 0
+      ? supabase.from('custom_field_values').select('field_id, value').in('field_id', fieldDefIds).eq('entity_id', id)
+      : Promise.resolve({ data: [] }),
   ])
 
   if (!deal) notFound()
@@ -41,6 +68,7 @@ export default async function DealDetailPage({ params }: Props) {
   const contact = deal.contacts as { id: string; name: string } | null
   const company = deal.companies as { id: string; name: string } | null
   const stage = deal.pipeline_stages as { name: string } | null
+  const assignedTags = (dealTagRows ?? []).map((r) => r.tags as { id: string; name: string; color: string }).filter(Boolean)
 
   const statusMap = {
     open: { label: 'Aberto', className: 'bg-blue-100 text-blue-700' },
@@ -155,6 +183,25 @@ export default async function DealDetailPage({ params }: Props) {
                   <Link href={`/companies/${company.id}`} className="hover:text-blue-600">{company.name}</Link>
                 </div>
               )}
+
+              {/* Tags */}
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tags</p>
+                <TagPicker
+                  entityType="deal"
+                  entityId={id}
+                  assignedTags={assignedTags}
+                  allTags={allTags ?? []}
+                />
+              </div>
+
+              {/* Custom fields */}
+              <CustomFieldDisplay
+                entityId={id}
+                entityType="deal"
+                fieldDefs={(fieldDefs ?? []) as { id: string; name: string; field_type: string; options: string[] | null }[]}
+                fieldValues={(fieldValues ?? []) as { field_id: string; value: string | null }[]}
+              />
             </CardContent>
           </Card>
         </div>

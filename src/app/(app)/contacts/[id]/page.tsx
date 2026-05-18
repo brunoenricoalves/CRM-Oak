@@ -8,6 +8,8 @@ import { ActivityForm } from '@/components/activities/activity-form'
 import { AvatarInitials } from '@/components/ui/avatar-initials'
 import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { TagPicker } from '@/components/tags/tag-picker'
+import { CustomFieldDisplay } from '@/components/custom-fields/custom-field-display'
 import { Pencil, Trash2, Mail, Phone, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -20,7 +22,14 @@ export default async function ContactDetailPage({ params }: Props) {
   const orgId = await getActiveOrgId()
   const supabase = await createClient()
 
-  const [{ data: contact }, { data: deals }] = await Promise.all([
+  const [
+    { data: contact },
+    { data: deals },
+    { data: allTags },
+    { data: contactTagRows },
+    { data: fieldDefs },
+    { data: fieldValues },
+  ] = await Promise.all([
     supabase
       .from('contacts')
       .select('id, name, email, phone, created_at, companies(id, name)')
@@ -34,11 +43,25 @@ export default async function ContactDetailPage({ params }: Props) {
       .eq('org_id', orgId!)
       .order('created_at', { ascending: false })
       .limit(5),
+    supabase.from('tags').select('id, name, color').eq('org_id', orgId!).order('name'),
+    supabase.from('contact_tags').select('tag_id, tags(id, name, color)').eq('contact_id', id),
+    supabase
+      .from('custom_field_defs')
+      .select('id, name, field_type, options')
+      .eq('org_id', orgId!)
+      .eq('entity_type', 'contact')
+      .order('position'),
+    supabase
+      .from('custom_field_values')
+      .select('field_id, value')
+      .in('field_id', (await supabase.from('custom_field_defs').select('id').eq('org_id', orgId!).eq('entity_type', 'contact')).data?.map((f) => f.id) ?? [])
+      .eq('entity_id', id),
   ])
 
   if (!contact) notFound()
 
   const company = contact.companies as { id: string; name: string } | null
+  const assignedTags = (contactTagRows ?? []).map((r) => r.tags as { id: string; name: string; color: string }).filter(Boolean)
 
   return (
     <div>
@@ -96,6 +119,26 @@ export default async function ContactDetailPage({ params }: Props) {
                   <Link href={`/companies/${company.id}`} className="hover:text-blue-600">{company.name}</Link>
                 </div>
               )}
+
+              {/* Tags */}
+              <div className="pt-2 border-t border-slate-100">
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Tags</p>
+                <TagPicker
+                  entityType="contact"
+                  entityId={id}
+                  assignedTags={assignedTags}
+                  allTags={allTags ?? []}
+                />
+              </div>
+
+              {/* Custom fields */}
+              <CustomFieldDisplay
+                entityId={id}
+                entityType="contact"
+                fieldDefs={(fieldDefs ?? []) as { id: string; name: string; field_type: string; options: string[] | null }[]}
+                fieldValues={(fieldValues ?? []) as { field_id: string; value: string | null }[]}
+              />
+
               <div className="pt-2 border-t border-slate-100 text-xs text-slate-400">
                 Criado em {new Date(contact.created_at).toLocaleDateString('pt-BR')}
               </div>

@@ -21,7 +21,7 @@ export async function ActivityFeed({ contactId, companyId, dealId }: ActivityFee
 
   let query = supabase
     .from('activities')
-    .select('id, type, body, created_at')
+    .select('id, type, body, user_name, created_at')
     .eq('org_id', orgId!)
     .order('created_at', { ascending: false })
     .limit(50)
@@ -49,8 +49,11 @@ export async function ActivityFeed({ contactId, companyId, dealId }: ActivityFee
               <Icon className="w-4 h-4" />
             </div>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-medium text-slate-500">{config.label}</span>
+                {a.user_name && (
+                  <span className="text-xs text-slate-400">por {a.user_name}</span>
+                )}
                 <span className="text-xs text-slate-400">
                   {new Date(a.created_at).toLocaleDateString('pt-BR', {
                     day: '2-digit',
