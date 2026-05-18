@@ -12,6 +12,7 @@ import {
   CheckSquare,
   Settings,
   LogOut,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +22,7 @@ const navItems = [
   { href: '/companies', label: 'Empresas', icon: Building2 },
   { href: '/deals', label: 'Negócios', icon: TrendingUp },
   { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
+  { href: '/reports', label: 'Relatórios', icon: BarChart3 },
 ]
 
 interface Props {

@@ -588,6 +588,7 @@ export type Database = {
           name: string
           org_id: string
           position: number
+          probability: number
           updated_at: string
         }
         Insert: {
@@ -597,6 +598,7 @@ export type Database = {
           name: string
           org_id: string
           position: number
+          probability?: number
           updated_at?: string
         }
         Update: {
@@ -606,11 +608,50 @@ export type Database = {
           name?: string
           org_id?: string
           position?: number
+          probability?: number
           updated_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "pipeline_stages_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      revenue_goals: {
+        Row: {
+          created_at: string
+          goal: number
+          id: string
+          month: number
+          org_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          goal: number
+          id?: string
+          month: number
+          org_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          goal?: number
+          id?: string
+          month?: number
+          org_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "revenue_goals_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
