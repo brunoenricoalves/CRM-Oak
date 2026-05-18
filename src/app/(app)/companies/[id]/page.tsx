@@ -37,6 +37,7 @@ export default async function CompanyDetailPage({ params }: Props) {
     { data: companyTagRows },
     { data: fieldDefs },
     { data: fieldValues },
+    { data: emailTemplates },
   ] = await Promise.all([
     supabase
       .from('companies')
@@ -68,6 +69,7 @@ export default async function CompanyDetailPage({ params }: Props) {
     fieldDefIds.length > 0
       ? supabase.from('custom_field_values').select('field_id, value').in('field_id', fieldDefIds).eq('entity_id', id)
       : Promise.resolve({ data: [] }),
+    supabase.from('email_templates').select('id, name, subject, body').eq('org_id', orgId!).order('name'),
   ])
 
   if (!company) notFound()
@@ -201,7 +203,7 @@ export default async function CompanyDetailPage({ params }: Props) {
               <CardTitle className="text-sm font-semibold text-slate-700">Registrar atividade</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityForm companyId={id} />
+              <ActivityForm companyId={id} emailTemplates={emailTemplates ?? []} />
             </CardContent>
           </Card>
           <Card>

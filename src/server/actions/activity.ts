@@ -12,6 +12,8 @@ export async function createActivity(_prev: unknown, formData: FormData) {
   const raw = {
     type: formData.get('type'),
     body: formData.get('body'),
+    subject: formData.get('subject') || undefined,
+    due_at: formData.get('due_at') || undefined,
     contact_id: formData.get('contact_id') || undefined,
     company_id: formData.get('company_id') || undefined,
     deal_id: formData.get('deal_id') || undefined,
@@ -31,6 +33,8 @@ export async function createActivity(_prev: unknown, formData: FormData) {
   const { error } = await supabase.from('activities').insert({
     type: parsed.data.type,
     body: parsed.data.body,
+    subject: parsed.data.subject || null,
+    due_at: parsed.data.due_at || null,
     org_id: orgId,
     user_id: user.id,
     user_name: userName,

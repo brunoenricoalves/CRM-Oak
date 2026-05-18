@@ -29,6 +29,7 @@ export default async function ContactDetailPage({ params }: Props) {
     { data: contactTagRows },
     { data: fieldDefs },
     { data: fieldValues },
+    { data: emailTemplates },
   ] = await Promise.all([
     supabase
       .from('contacts')
@@ -56,6 +57,7 @@ export default async function ContactDetailPage({ params }: Props) {
       .select('field_id, value')
       .in('field_id', (await supabase.from('custom_field_defs').select('id').eq('org_id', orgId!).eq('entity_type', 'contact')).data?.map((f) => f.id) ?? [])
       .eq('entity_id', id),
+    supabase.from('email_templates').select('id, name, subject, body').eq('org_id', orgId!).order('name'),
   ])
 
   if (!contact) notFound()
@@ -171,7 +173,7 @@ export default async function ContactDetailPage({ params }: Props) {
               <CardTitle className="text-sm font-semibold text-slate-700">Registrar atividade</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityForm contactId={id} />
+              <ActivityForm contactId={id} emailTemplates={emailTemplates ?? []} />
             </CardContent>
           </Card>
           <Card>

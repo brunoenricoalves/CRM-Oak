@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
-import { MessageSquare, Phone, Mail, Users } from 'lucide-react'
+import { markActivityDone } from '@/server/actions/email-template'
+import { MessageSquare, Phone, Mail, Users, CheckCircle2, Clock } from 'lucide-react'
 
 const typeConfig = {
   note: { icon: MessageSquare, label: 'Nota', color: 'text-slate-500' },
@@ -19,9 +20,17 @@ export async function ActivityFeed({ contactId, companyId, dealId }: ActivityFee
   const orgId = await getActiveOrgId()
   const supabase = await createClient()
 
+  const revalidatePath = contactId
+    ? `/contacts/${contactId}`
+    : companyId
+      ? `/companies/${companyId}`
+      : dealId
+        ? `/deals/${dealId}`
+        : '/dashboard'
+
   let query = supabase
     .from('activities')
-    .select('id, type, body, user_name, created_at')
+    .select('id, type, body, subject, due_at, done, user_name, created_at')
     .eq('org_id', orgId!)
     .order('created_at', { ascending: false })
     .limit(50)
@@ -38,17 +47,22 @@ export async function ActivityFeed({ contactId, companyId, dealId }: ActivityFee
     )
   }
 
+  const now = new Date()
+
   return (
     <div className="space-y-4">
       {activities.map((a) => {
         const config = typeConfig[a.type as keyof typeof typeConfig] ?? typeConfig.note
         const Icon = config.icon
+        const isOverdue = a.due_at && !a.done && new Date(a.due_at) < now
+        const isDueToday = a.due_at && !a.done && !isOverdue
+
         return (
-          <div key={a.id} className="flex gap-3">
+          <div key={a.id} className={`flex gap-3 ${a.done ? 'opacity-60' : ''}`}>
             <div className={`mt-0.5 ${config.color}`}>
               <Icon className="w-4 h-4" />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs font-medium text-slate-500">{config.label}</span>
                 {a.user_name && (
@@ -62,8 +76,45 @@ export async function ActivityFeed({ contactId, companyId, dealId }: ActivityFee
                     minute: '2-digit',
                   })}
                 </span>
+                {a.done && (
+                  <span className="inline-flex items-center gap-0.5 text-xs text-green-600">
+                    <CheckCircle2 className="w-3 h-3" /> Concluído
+                  </span>
+                )}
               </div>
-              <p className="text-sm text-slate-700 mt-0.5 whitespace-pre-wrap">{a.body}</p>
+
+              {a.subject && (
+                <p className="text-sm font-medium text-slate-800 mt-0.5">{a.subject}</p>
+              )}
+              {a.body && (
+                <p className="text-sm text-slate-700 mt-0.5 whitespace-pre-wrap">{a.body}</p>
+              )}
+
+              {a.due_at && (
+                <div className={`flex items-center gap-1 mt-1 text-xs ${isOverdue ? 'text-red-500' : 'text-amber-600'}`}>
+                  <Clock className="w-3 h-3" />
+                  <span>
+                    {isOverdue ? 'Venceu em ' : 'Agendado: '}
+                    {new Date(a.due_at).toLocaleDateString('pt-BR', {
+                      day: '2-digit',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </span>
+                </div>
+              )}
+
+              {(a.due_at || a.type === 'call' || a.type === 'meeting') && !a.done && (
+                <form action={markActivityDone.bind(null, a.id, revalidatePath)} className="mt-1">
+                  <button
+                    type="submit"
+                    className="text-xs text-slate-400 hover:text-green-600 transition-colors"
+                  >
+                    ✓ Marcar como feito
+                  </button>
+                </form>
+              )}
             </div>
           </div>
         )

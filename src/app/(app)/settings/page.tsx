@@ -58,6 +58,14 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
         </Link>
+        <Link href="/settings/email-templates" className="block">
+          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
+            <CardContent className="p-4">
+              <p className="font-medium">Templates de email</p>
+              <p className="text-sm text-slate-500">Crie templates reutilizáveis para emails</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <Card>

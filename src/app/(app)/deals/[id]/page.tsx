@@ -38,6 +38,7 @@ export default async function DealDetailPage({ params }: Props) {
     { data: dealTagRows },
     { data: fieldDefs },
     { data: fieldValues },
+    { data: emailTemplates },
   ] = await Promise.all([
     supabase
       .from('deals')
@@ -61,6 +62,7 @@ export default async function DealDetailPage({ params }: Props) {
     fieldDefIds.length > 0
       ? supabase.from('custom_field_values').select('field_id, value').in('field_id', fieldDefIds).eq('entity_id', id)
       : Promise.resolve({ data: [] }),
+    supabase.from('email_templates').select('id, name, subject, body').eq('org_id', orgId!).order('name'),
   ])
 
   if (!deal) notFound()
@@ -212,7 +214,7 @@ export default async function DealDetailPage({ params }: Props) {
               <CardTitle className="text-sm font-semibold text-slate-700">Registrar atividade</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityForm dealId={id} />
+              <ActivityForm dealId={id} emailTemplates={emailTemplates ?? []} />
             </CardContent>
           </Card>
           <Card>

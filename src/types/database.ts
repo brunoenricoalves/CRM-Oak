@@ -21,8 +21,11 @@ export type Database = {
           contact_id: string | null
           created_at: string
           deal_id: string | null
+          done: boolean
+          due_at: string | null
           id: string
           org_id: string
+          subject: string | null
           type: string
           user_id: string
           user_name: string | null
@@ -33,8 +36,11 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           deal_id?: string | null
+          done?: boolean
+          due_at?: string | null
           id?: string
           org_id: string
+          subject?: string | null
           type: string
           user_id: string
           user_name?: string | null
@@ -45,8 +51,11 @@ export type Database = {
           contact_id?: string | null
           created_at?: string
           deal_id?: string | null
+          done?: boolean
+          due_at?: string | null
           id?: string
           org_id?: string
+          subject?: string | null
           type?: string
           user_id?: string
           user_name?: string | null
@@ -310,6 +319,44 @@ export type Database = {
           },
           {
             foreignKeyName: "custom_field_values_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_templates: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
