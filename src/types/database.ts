@@ -405,6 +405,7 @@ export type Database = {
           org_id: string
           owner_id: string | null
           position: number
+          source: string | null
           stage_id: string | null
           status: string
           title: string
@@ -421,6 +422,7 @@ export type Database = {
           org_id: string
           owner_id?: string | null
           position: number
+          source?: string | null
           stage_id?: string | null
           status?: string
           title: string
@@ -437,6 +439,7 @@ export type Database = {
           org_id?: string
           owner_id?: string | null
           position?: number
+          source?: string | null
           stage_id?: string | null
           status?: string
           title?: string
@@ -517,6 +520,86 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetings: {
+        Row: {
+          id: string
+          org_id: string
+          title: string
+          description: string | null
+          status: string
+          scheduled_at: string
+          ended_at: string | null
+          duration_minutes: number | null
+          contact_id: string | null
+          deal_id: string | null
+          company_id: string | null
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          title: string
+          description?: string | null
+          status?: string
+          scheduled_at: string
+          ended_at?: string | null
+          duration_minutes?: number | null
+          contact_id?: string | null
+          deal_id?: string | null
+          company_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          title?: string
+          description?: string | null
+          status?: string
+          scheduled_at?: string
+          ended_at?: string | null
+          duration_minutes?: number | null
+          contact_id?: string | null
+          deal_id?: string | null
+          company_id?: string | null
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -661,6 +744,105 @@ export type Database = {
             columns: ["org_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposal_items: {
+        Row: {
+          id: string
+          proposal_id: string
+          service: string
+          description: string | null
+          value: number
+          position: number
+        }
+        Insert: {
+          id?: string
+          proposal_id: string
+          service: string
+          description?: string | null
+          value: number
+          position?: number
+        }
+        Update: {
+          id?: string
+          proposal_id?: string
+          service?: string
+          description?: string | null
+          value?: number
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposal_items_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      proposals: {
+        Row: {
+          id: string
+          org_id: string
+          deal_id: string
+          contact_id: string | null
+          company_id: string | null
+          title: string
+          status: string
+          notes: string | null
+          sent_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          deal_id: string
+          contact_id?: string | null
+          company_id?: string | null
+          title: string
+          status?: string
+          notes?: string | null
+          sent_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          deal_id?: string
+          contact_id?: string | null
+          company_id?: string | null
+          title?: string
+          status?: string
+          notes?: string | null
+          sent_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "proposals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
