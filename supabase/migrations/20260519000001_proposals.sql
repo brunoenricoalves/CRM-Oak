@@ -62,3 +62,11 @@ CREATE POLICY "delete_proposal_items" ON public.proposal_items
     EXISTS (SELECT 1 FROM public.proposals p
       WHERE p.id = proposal_items.proposal_id AND public.is_org_member(p.org_id))
   );
+CREATE POLICY "update_proposal_items" ON public.proposal_items
+  FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.proposals p
+      WHERE p.id = proposal_items.proposal_id AND public.is_org_member(p.org_id))
+  ) WITH CHECK (
+    EXISTS (SELECT 1 FROM public.proposals p
+      WHERE p.id = proposal_items.proposal_id AND public.is_org_member(p.org_id))
+  );
