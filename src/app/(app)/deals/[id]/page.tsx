@@ -9,6 +9,8 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TagPicker } from '@/components/tags/tag-picker'
 import { CustomFieldDisplay } from '@/components/custom-fields/custom-field-display'
+import { ProposalForm } from '@/components/proposals/proposal-form'
+import { ProposalList } from '@/components/proposals/proposal-list'
 import { Pencil, Trash2, DollarSign, Calendar, User, Building2, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -223,6 +225,27 @@ export default async function DealDetailPage({ params }: Props) {
             </CardHeader>
             <CardContent>
               <ActivityFeed dealId={id} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-700">Nova proposta</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProposalForm
+                dealId={id}
+                contactId={contact?.id}
+                companyId={company?.id}
+                companyName={company?.name}
+              />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-700">Propostas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ProposalList dealId={id} />
             </CardContent>
           </Card>
         </div>
