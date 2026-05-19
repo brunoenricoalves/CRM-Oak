@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { logout } from '@/server/actions/auth'
 import { AvatarInitials } from '@/components/ui/avatar-initials'
+import { NotificationBell } from './notification-bell'
 import {
   LayoutDashboard,
   Users,
@@ -28,9 +29,10 @@ const navItems = [
 interface Props {
   orgName: string
   userName: string
+  unreadNotifications?: number
 }
 
-export function Sidebar({ orgName, userName }: Props) {
+export function Sidebar({ orgName, userName, unreadNotifications = 0 }: Props) {
   const pathname = usePathname()
 
   function navClass(href: string) {
@@ -73,6 +75,7 @@ export function Sidebar({ orgName, userName }: Props) {
           <div className="flex-1 min-w-0">
             <p className="text-white text-sm font-medium truncate">{userName}</p>
           </div>
+          <NotificationBell unreadCount={unreadNotifications} />
           <form action={logout}>
             <button
               type="submit"
