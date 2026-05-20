@@ -847,6 +847,67 @@ export type Database = {
           },
         ]
       }
+      projects: {
+        Row: {
+          id: string
+          org_id: string
+          deal_id: string
+          contact_id: string | null
+          company_id: string | null
+          status: string
+          monday_url: string | null
+          start_date: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          org_id: string
+          deal_id: string
+          contact_id?: string | null
+          company_id?: string | null
+          status?: string
+          monday_url?: string | null
+          start_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          org_id?: string
+          deal_id?: string
+          contact_id?: string | null
+          company_id?: string | null
+          status?: string
+          monday_url?: string | null
+          start_date?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "projects_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projects_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       revenue_goals: {
         Row: {
           created_at: string
