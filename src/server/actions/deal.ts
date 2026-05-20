@@ -144,15 +144,33 @@ export async function closeDeal(id: string, status: 'won' | 'lost'): Promise<voi
   if (!orgId) return
 
   const supabase = await createClient()
-  await supabase
+
+  const { data: deal } = await supabase
     .from('deals')
     .update({ status, closed_at: new Date().toISOString() })
     .eq('id', id)
     .eq('org_id', orgId)
+    .select('contact_id, company_id')
+    .single()
+
+  if (status === 'won' && deal) {
+    await supabase.from('projects').upsert(
+      {
+        org_id: orgId,
+        deal_id: id,
+        contact_id: deal.contact_id ?? null,
+        company_id: deal.company_id ?? null,
+        status: 'active',
+        start_date: new Date().toISOString().slice(0, 10),
+      },
+      { onConflict: 'deal_id', ignoreDuplicates: true }
+    )
+  }
 
   revalidatePath(`/deals/${id}`)
   revalidatePath('/deals')
   revalidatePath('/dashboard')
+  revalidatePath('/projects')
 }
 
 export async function reopenDeal(id: string): Promise<void> {
