@@ -81,14 +81,19 @@ export function ProposalForm({ dealId, contactId, companyId, companyName }: Prop
   const hasItems = items.every((it) => it.service && it.value)
 
   async function handlePreview() {
-    // Open the tab synchronously to avoid popup blockers
+    const validItems = items.filter((it) => it.service && parseFloat(it.value) > 0)
+    if (validItems.length === 0) {
+      toast.error('Adicione pelo menos um item com valor para gerar o PDF')
+      return
+    }
+    // Open tab synchronously before the first await to avoid popup blockers
     const win = window.open('', '_blank')
     setIsPreviewing(true)
     try {
       const res = await fetch('/api/proposals/preview/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, items }),
+        body: JSON.stringify({ title, items: validItems }),
       })
       if (!res.ok) throw new Error('Falha ao gerar PDF')
       const blob = await res.blob()
@@ -227,15 +232,15 @@ export function ProposalForm({ dealId, contactId, companyId, companyName }: Prop
         <button
           type="button"
           onClick={handlePreview}
-          disabled={!hasItems || isPreviewing}
+          disabled={isPreviewing}
           className="flex items-center gap-1.5 px-4 rounded-lg text-sm font-medium transition-all"
           style={{
             minHeight: 40,
             background: 'transparent',
-            color: !hasItems || isPreviewing ? 'var(--text-dim)' : 'var(--text-secondary)',
+            color: isPreviewing ? 'var(--text-dim)' : 'var(--text-secondary)',
             border: '1px solid var(--surface-border)',
-            cursor: !hasItems || isPreviewing ? 'not-allowed' : 'pointer',
-            opacity: !hasItems || isPreviewing ? 0.5 : 1,
+            cursor: isPreviewing ? 'not-allowed' : 'pointer',
+            opacity: isPreviewing ? 0.6 : 1,
           }}
         >
           <Eye className="w-4 h-4" />
