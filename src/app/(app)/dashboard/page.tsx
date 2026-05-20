@@ -437,7 +437,15 @@ export default async function DashboardPage({ searchParams }: Props) {
           <RevenueChart data={revenueData} />
         </div>
 
-        <div style={{ ...card, padding: '20px' }} className="lg:col-span-2">
+        <div
+          style={{
+            ...card,
+            padding: '20px',
+            background: 'linear-gradient(155deg, rgba(59,130,246,0.07) 0%, var(--surface) 55%)',
+            boxShadow: '0 0 48px -14px rgba(59,130,246,0.28), var(--card-shadow, none)',
+          }}
+          className="lg:col-span-2"
+        >
           <p className="text-sm font-semibold mb-0.5" style={{ fontFamily: 'var(--font-syne)', color: 'var(--text-primary)' }}>
             Meta do mês
           </p>
