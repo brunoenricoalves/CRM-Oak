@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect, useRef } from 'react'
 import { useFormStatus } from 'react-dom'
 import { toast } from 'sonner'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Eye } from 'lucide-react'
 import { createProposal } from '@/server/actions/proposal'
 import { PROPOSAL_SERVICES } from '@/lib/validations/proposal'
 
@@ -49,6 +49,7 @@ export function ProposalForm({ dealId, contactId, companyId, companyName }: Prop
   const [title, setTitle] = useState(
     companyName ? `Proposta Oak – ${companyName}` : 'Proposta Oak'
   )
+  const [isPreviewing, setIsPreviewing] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
@@ -78,6 +79,33 @@ export function ProposalForm({ dealId, contactId, companyId, companyName }: Prop
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v)
 
   const hasItems = items.every((it) => it.service && it.value)
+
+  async function handlePreview() {
+    // Open the tab synchronously to avoid popup blockers
+    const win = window.open('', '_blank')
+    setIsPreviewing(true)
+    try {
+      const res = await fetch('/api/proposals/preview/pdf', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, items }),
+      })
+      if (!res.ok) throw new Error('Falha ao gerar PDF')
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      if (win) {
+        win.location.href = url
+      } else {
+        window.open(url, '_blank')
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000)
+    } catch {
+      win?.close()
+      toast.error('Erro ao gerar preview do PDF')
+    } finally {
+      setIsPreviewing(false)
+    }
+  }
 
   return (
     <form ref={formRef} action={formAction} className="space-y-4">
@@ -194,7 +222,26 @@ export function ProposalForm({ dealId, contactId, companyId, companyName }: Prop
         }}
       />
 
-      <SubmitButton disabled={!hasItems} />
+      <div className="flex items-center gap-2">
+        <SubmitButton disabled={!hasItems} />
+        <button
+          type="button"
+          onClick={handlePreview}
+          disabled={!hasItems || isPreviewing}
+          className="flex items-center gap-1.5 px-4 rounded-lg text-sm font-medium transition-all"
+          style={{
+            minHeight: 40,
+            background: 'transparent',
+            color: !hasItems || isPreviewing ? 'var(--text-dim)' : 'var(--text-secondary)',
+            border: '1px solid var(--surface-border)',
+            cursor: !hasItems || isPreviewing ? 'not-allowed' : 'pointer',
+            opacity: !hasItems || isPreviewing ? 0.5 : 1,
+          }}
+        >
+          <Eye className="w-4 h-4" />
+          {isPreviewing ? 'Gerando…' : 'Preview PDF'}
+        </button>
+      </div>
     </form>
   )
 }
