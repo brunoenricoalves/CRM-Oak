@@ -40,13 +40,14 @@ export async function sendEmail(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return { error: 'Usuário não autenticado' }
 
-  await supabase.from('activities').insert({
+  const { error: activityError } = await supabase.from('activities').insert({
     org_id: orgId,
     type: 'email',
     body: `**${subject.trim()}**\n\n${body.trim()}`,
     deal_id: dealId,
     user_id: user.id,
   })
+  if (activityError) return { error: 'Falha ao registrar atividade' }
 
   revalidatePath(`/deals/${dealId}`)
   return {}
