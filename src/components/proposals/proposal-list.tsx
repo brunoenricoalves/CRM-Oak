@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
 import { updateProposalStatus, deleteProposal } from '@/server/actions/proposal'
 import { CheckCircle2, XCircle, Trash2 } from 'lucide-react'
+import { PdfDownloadButton } from './pdf-download-button'
 
 interface ProposalListProps {
   dealId: string
@@ -120,6 +121,7 @@ export async function ProposalList({ dealId }: ProposalListProps) {
                   </form>
                 </>
               )}
+              <PdfDownloadButton proposalId={p.id} />
               <form
                 action={deleteProposal.bind(null, p.id, dealId)}
                 className="ml-auto"

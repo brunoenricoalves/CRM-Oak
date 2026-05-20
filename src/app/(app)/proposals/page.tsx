@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getActiveOrgId } from '@/lib/org'
+import { PdfDownloadButton } from '@/components/proposals/pdf-download-button'
 
 interface Props {
   searchParams: Promise<{ status?: string }>
@@ -99,22 +100,23 @@ export default async function ProposalsPage({ searchParams }: Props) {
             const deal = p.deals as { title: string } | null
 
             return (
-              <Link
+              <div
                 key={p.id}
-                href={`/deals/${p.deal_id}`}
-                className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl transition-all"
+                className="flex items-center justify-between gap-4 px-5 py-4 rounded-xl"
                 style={{ ...card, display: 'flex' }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(37,99,235,0.3)')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--surface-border)')}
               >
-                <div className="min-w-0">
+                <Link
+                  href={`/deals/${p.deal_id}`}
+                  className="flex-1 min-w-0"
+                  style={{ textDecoration: 'none' }}
+                >
                   <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
                     {p.title}
                   </p>
                   <p className="text-xs mt-0.5 truncate" style={{ color: 'var(--text-dim)' }}>
                     {company?.name ?? deal?.title ?? '—'}
                   </p>
-                </div>
+                </Link>
 
                 <div className="flex items-center gap-4 shrink-0">
                   <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
@@ -129,8 +131,9 @@ export default async function ProposalsPage({ searchParams }: Props) {
                   >
                     {badge.label}
                   </span>
+                  <PdfDownloadButton proposalId={p.id} />
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
