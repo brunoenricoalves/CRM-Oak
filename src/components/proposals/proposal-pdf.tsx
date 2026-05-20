@@ -4,7 +4,6 @@ interface Item {
   service: string
   description: string | null
   value: number | string
-  position: number
 }
 
 interface ProposalPdfProps {
@@ -96,6 +95,7 @@ export function ProposalPdf({ title, items, logoBase64 }: ProposalPdfProps) {
         </View>
 
         {/* Items */}
+        {/* index key is safe: single-pass server render */}
         {items.map((it, i) => (
           <View key={i} style={styles.tableRow}>
             <Text style={styles.colService}>{it.service}</Text>
