@@ -16,19 +16,23 @@ export function PdfDownloadButton({ proposalId }: PdfDownloadButtonProps) {
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: 32,
+        gap: 4,
+        padding: '4px 10px',
         height: 32,
         borderRadius: 8,
-        color: 'var(--text-dim)',
-        background: 'none',
-        border: 'none',
+        color: 'var(--text-secondary)',
+        background: 'rgba(37,99,235,0.1)',
+        border: '1px solid rgba(37,99,235,0.2)',
         textDecoration: 'none',
         flexShrink: 0,
+        fontSize: 12,
+        fontWeight: 500,
       }}
-      onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = '#2563eb')}
-      onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = 'var(--text-dim)')}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(37,99,235,0.2)' }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLAnchorElement).style.background = 'rgba(37,99,235,0.1)' }}
     >
-      <Download size={16} />
+      <Download size={14} />
+      PDF
     </a>
   )
 }
