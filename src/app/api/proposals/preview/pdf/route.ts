@@ -22,6 +22,11 @@ export async function POST(req: NextRequest) {
       ? body.title.trim()
       : 'Proposta'
 
+  const clientName =
+    typeof (body as { clientName?: unknown }).clientName === 'string'
+      ? (body as { clientName: string }).clientName
+      : null
+
   const rawItems = Array.isArray(body.items) ? body.items : []
   const items = rawItems
     .filter((it): it is Record<string, unknown> => !!it && typeof it === 'object')
@@ -46,7 +51,7 @@ export async function POST(req: NextRequest) {
   let buffer: Buffer
   try {
     buffer = await renderToBuffer(
-      React.createElement(ProposalPdf, { title, items, logoBase64 })
+      React.createElement(ProposalPdf, { title, clientName, items, logoBase64 })
     )
   } catch {
     return new NextResponse('PDF generation failed', { status: 500 })

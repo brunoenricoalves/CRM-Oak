@@ -93,7 +93,7 @@ export function ProposalForm({ dealId, contactId, companyId, companyName }: Prop
       const res = await fetch('/api/proposals/preview/pdf', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, items: validItems }),
+        body: JSON.stringify({ title, clientName: companyName ?? null, items: validItems }),
       })
       if (!res.ok) throw new Error('Falha ao gerar PDF')
       const blob = await res.blob()

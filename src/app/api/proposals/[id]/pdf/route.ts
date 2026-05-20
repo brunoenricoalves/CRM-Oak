@@ -20,12 +20,16 @@ export async function GET(
   const supabase = await createClient()
   const { data: proposal, error: queryError } = await supabase
     .from('proposals')
-    .select('id, title, proposal_items(service, description, value, position)')
+    .select('id, title, companies(name), contacts(name), proposal_items(service, description, value, position)')
     .eq('id', id)
     .eq('org_id', orgId)
     .single()
 
   if (queryError || !proposal) return new NextResponse('Not found', { status: 404 })
+
+  const company = proposal.companies as { name: string } | null
+  const contact = proposal.contacts as { name: string } | null
+  const clientName = company?.name ?? contact?.name ?? null
 
   const items = ((proposal.proposal_items ?? []) as {
     service: string
@@ -46,7 +50,7 @@ export async function GET(
   let buffer: Buffer
   try {
     buffer = await renderToBuffer(
-      React.createElement(ProposalPdf, { title: proposal.title, items, logoBase64 })
+      React.createElement(ProposalPdf, { title: proposal.title, clientName, items, logoBase64 })
     )
   } catch {
     return new NextResponse('PDF generation failed', { status: 500 })
