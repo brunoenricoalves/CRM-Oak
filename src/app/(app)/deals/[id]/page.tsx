@@ -44,7 +44,7 @@ export default async function DealDetailPage({ params }: Props) {
   ] = await Promise.all([
     supabase
       .from('deals')
-      .select('id, title, value, status, close_date, stage_id, contacts(id, name), companies(id, name), pipeline_stages(name)')
+      .select('id, title, value, status, close_date, stage_id, contacts(id, name, email), companies(id, name), pipeline_stages(name)')
       .eq('id', id)
       .eq('org_id', orgId!)
       .single(),
@@ -69,7 +69,7 @@ export default async function DealDetailPage({ params }: Props) {
 
   if (!deal) notFound()
 
-  const contact = deal.contacts as { id: string; name: string } | null
+  const contact = deal.contacts as { id: string; name: string; email: string | null } | null
   const company = deal.companies as { id: string; name: string } | null
   const stage = deal.pipeline_stages as { name: string } | null
   const assignedTags = (dealTagRows ?? []).map((r) => r.tags as { id: string; name: string; color: string }).filter(Boolean)
@@ -216,7 +216,11 @@ export default async function DealDetailPage({ params }: Props) {
               <CardTitle className="text-sm font-semibold text-slate-700">Registrar atividade</CardTitle>
             </CardHeader>
             <CardContent>
-              <ActivityForm dealId={id} emailTemplates={emailTemplates ?? []} />
+              <ActivityForm
+                dealId={id}
+                contactEmail={contact?.email ?? undefined}
+                emailTemplates={emailTemplates ?? []}
+              />
             </CardContent>
           </Card>
           <Card>

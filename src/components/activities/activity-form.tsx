@@ -1,10 +1,12 @@
 'use client'
 
-import { useActionState, useState, useEffect, useRef } from 'react'
+import { useActionState, useState, useEffect, useRef, useTransition } from 'react'
 import { useFormStatus } from 'react-dom'
 import { toast } from 'sonner'
 import { createActivity } from '@/server/actions/activity'
+import { sendEmail } from '@/server/actions/send-email'
 import { Button } from '@/components/ui/button'
+import { Send } from 'lucide-react'
 
 interface Template {
   id: string
@@ -17,6 +19,7 @@ interface ActivityFormProps {
   contactId?: string
   companyId?: string
   dealId?: string
+  contactEmail?: string
   emailTemplates?: Template[]
 }
 
@@ -29,11 +32,13 @@ function SubmitButton() {
   )
 }
 
-export function ActivityForm({ contactId, companyId, dealId, emailTemplates = [] }: ActivityFormProps) {
+export function ActivityForm({ contactId, companyId, dealId, contactEmail, emailTemplates = [] }: ActivityFormProps) {
   const [state, formAction] = useActionState(createActivity, null)
   const [type, setType] = useState('note')
   const [subject, setSubject] = useState('')
   const [body, setBody] = useState('')
+  const [to, setTo] = useState(contactEmail ?? '')
+  const [isPending, startTransition] = useTransition()
   const formRef = useRef<HTMLFormElement>(null)
 
   useEffect(() => {
@@ -42,16 +47,32 @@ export function ActivityForm({ contactId, companyId, dealId, emailTemplates = []
       setType('note')
       setSubject('')
       setBody('')
+      setTo(contactEmail ?? '')
       toast.success('Atividade registrada')
     }
     if (state?.error) toast.error(state.error)
-  }, [state])
+  }, [state, contactEmail])
 
   function applyTemplate(templateId: string) {
     const t = emailTemplates.find((t) => t.id === templateId)
     if (!t) return
     setSubject(t.subject)
     setBody(t.body)
+  }
+
+  function handleSendEmail() {
+    if (!dealId) return
+    startTransition(async () => {
+      const result = await sendEmail(dealId, to, subject, body)
+      if (result.error) {
+        toast.error(result.error)
+      } else {
+        toast.success('E-mail enviado e registrado')
+        setSubject('')
+        setBody('')
+        setTo(contactEmail ?? '')
+      }
+    })
   }
 
   const showSubject = type === 'email'
@@ -92,6 +113,15 @@ export function ActivityForm({ contactId, companyId, dealId, emailTemplates = []
 
       {showSubject && (
         <input
+          placeholder="Para: email do destinatário"
+          value={to}
+          onChange={(e) => setTo(e.target.value)}
+          className="w-full rounded-md border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+      )}
+
+      {showSubject && (
+        <input
           name="subject"
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
@@ -121,7 +151,22 @@ export function ActivityForm({ contactId, companyId, dealId, emailTemplates = []
         </div>
       )}
 
-      <SubmitButton />
+      <div className="flex items-center gap-2">
+        <SubmitButton />
+        {showSubject && dealId && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={isPending || !to.trim() || !subject.trim() || !body.trim()}
+            onClick={handleSendEmail}
+            className="flex items-center gap-1.5"
+          >
+            <Send className="w-3.5 h-3.5" />
+            {isPending ? 'Enviando...' : 'Enviar e-mail'}
+          </Button>
+        )}
+      </div>
     </form>
   )
 }
