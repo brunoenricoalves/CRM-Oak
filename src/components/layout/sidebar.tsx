@@ -10,6 +10,7 @@ import {
   Building2,
   TrendingUp,
   FileText,
+  Briefcase,
   CheckSquare,
   Settings,
   LogOut,
@@ -30,6 +31,7 @@ const sections = [
     items: [
       { href: '/deals', label: 'Negócios', icon: TrendingUp },
       { href: '/proposals', label: 'Propostas', icon: FileText },
+      { href: '/projects', label: 'Projetos', icon: Briefcase },
       { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
     ],
   },
