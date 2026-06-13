@@ -20,7 +20,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     .eq('read', false)
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
+    <div className="flex min-h-screen" style={{ background: 'var(--bg)' }}>
       <Sidebar orgName={org.name} userName={userName} unreadNotifications={unreadCount ?? 0} />
       <main className="flex-1 p-8 min-w-0 overflow-auto">{children}</main>
     </div>

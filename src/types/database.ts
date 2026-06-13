@@ -162,6 +162,47 @@ export type Database = {
           },
         ]
       }
+      costs: {
+        Row: {
+          active: boolean
+          amount: number
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+          org_id: string
+          type: string
+        }
+        Insert: {
+          active?: boolean
+          amount: number
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          org_id: string
+          type?: string
+        }
+        Update: {
+          active?: boolean
+          amount?: number
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          org_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "costs_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contact_tags: {
         Row: {
           contact_id: string
@@ -359,6 +400,82 @@ export type Database = {
             foreignKeyName: "email_templates_org_id_fkey"
             columns: ["org_id"]
             isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_entries: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          date: string
+          description: string
+          id: string
+          org_id: string
+          type: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          date: string
+          description: string
+          id?: string
+          org_id: string
+          type: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          date?: string
+          description?: string
+          id?: string
+          org_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_entries_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_settings: {
+        Row: {
+          current_cash: number
+          id: string
+          monthly_goal: number
+          org_id: string
+          tax_rate: number
+          updated_at: string
+        }
+        Insert: {
+          current_cash?: number
+          id?: string
+          monthly_goal?: number
+          org_id: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Update: {
+          current_cash?: number
+          id?: string
+          monthly_goal?: number
+          org_id?: string
+          tax_rate?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_settings_org_id_fkey"
+            columns: ["org_id"]
+            isOneToOne: true
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },

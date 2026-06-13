@@ -26,18 +26,24 @@ export default async function DealsPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-slate-900">Negócios</h1>
-        <Link href="/deals/new" className={buttonVariants()}>
-          <Plus className="w-4 h-4 mr-2" />
+        <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-syne)', color: 'var(--text-primary)' }}>
+          Negócios
+        </h1>
+        <Link
+          href="/deals/new"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          style={{ background: 'var(--accent1)', color: '#fff' }}
+        >
+          <Plus className="w-4 h-4" />
           Novo negócio
         </Link>
       </div>
 
       {!stages || stages.length === 0 ? (
-        <div className="bg-white rounded-lg border border-slate-200 p-12 text-center text-slate-500">
-          <p className="text-lg font-medium">Configure o pipeline primeiro</p>
-          <p className="text-sm mt-1">
-            <Link href="/settings/pipeline" className="text-blue-600 hover:underline">
+        <div className="p-12 text-center rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--surface-border)' }}>
+          <p className="text-lg font-medium" style={{ color: 'var(--text-secondary)' }}>Configure o pipeline primeiro</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>
+            <Link href="/settings/pipeline" style={{ color: 'var(--accent1)' }}>
               Vá para Configurações → Pipeline
             </Link>{' '}
             para criar as etapas do seu pipeline.

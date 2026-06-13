@@ -1,35 +1,39 @@
 'use client'
 
 import {
-  AreaChart,
-  Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   Tooltip,
   ResponsiveContainer,
+  Cell,
 } from 'recharts'
 
 interface DataPoint {
-  month: string
+  source: string
   value: number
 }
+
+const COLORS = ['#2563eb', '#10b981', '#8b5cf6', '#f59e0b', '#06b6d4', '#f43f5e']
 
 const fmt = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
 
-export function RevenueChart({ data }: { data: DataPoint[] }) {
+export function ChannelBarChart({ data }: { data: DataPoint[] }) {
+  if (!data.length) {
+    return (
+      <div className="flex items-center justify-center" style={{ height: 180, color: 'var(--text-dim)', fontSize: 13 }}>
+        Sem dados de canal no período
+      </div>
+    )
+  }
   return (
-    <ResponsiveContainer width="100%" height={200}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#2563eb" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#2563eb" stopOpacity={0} />
-          </linearGradient>
-        </defs>
+    <ResponsiveContainer width="100%" height={180}>
+      <BarChart data={data} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
         <XAxis
-          dataKey="month"
-          tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.3)', fontFamily: 'var(--font-dm-sans)' }}
+          dataKey="source"
+          tick={{ fontSize: 11, fill: 'rgba(255,255,255,0.4)', fontFamily: 'var(--font-dm-sans)' }}
           axisLine={false}
           tickLine={false}
         />
@@ -49,18 +53,14 @@ export function RevenueChart({ data }: { data: DataPoint[] }) {
             fontSize: 12,
           }}
           formatter={(v) => [fmt(Number(v)), 'Receita']}
-          cursor={{ stroke: 'rgba(37,99,235,0.3)', strokeWidth: 1 }}
+          cursor={{ fill: 'rgba(255,255,255,0.04)' }}
         />
-        <Area
-          type="monotone"
-          dataKey="value"
-          stroke="#2563eb"
-          strokeWidth={2}
-          fill="url(#revenueGrad)"
-          dot={false}
-          activeDot={{ r: 4, fill: '#2563eb', strokeWidth: 0 }}
-        />
-      </AreaChart>
+        <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={56}>
+          {data.map((_, i) => (
+            <Cell key={i} fill={COLORS[i % COLORS.length]} />
+          ))}
+        </Bar>
+      </BarChart>
     </ResponsiveContainer>
   )
 }

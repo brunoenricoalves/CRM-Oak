@@ -86,6 +86,20 @@ export async function inviteMember(_prev: unknown, formData: FormData) {
   return { success: true }
 }
 
+export async function updateStageProbability(stageId: string, probability: number) {
+  const orgId = await getActiveOrgId()
+  if (!orgId) return
+
+  const supabase = await createClient()
+  await supabase
+    .from('pipeline_stages')
+    .update({ probability })
+    .eq('id', stageId)
+    .eq('org_id', orgId)
+
+  revalidatePath('/settings/pipeline')
+}
+
 export async function updateOrgName(_prev: unknown, formData: FormData) {
   const orgId = await getActiveOrgId()
   if (!orgId) return { error: 'Sem organização ativa' }

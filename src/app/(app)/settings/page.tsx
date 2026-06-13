@@ -4,17 +4,34 @@ import { useActionState } from 'react'
 import { useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { updateOrgName } from '@/server/actions/settings'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ChevronRight } from 'lucide-react'
+
+const card = {
+  background: 'var(--surface)',
+  border: '1px solid var(--surface-border)',
+  borderRadius: 12,
+}
+
+const settingLinks = [
+  { href: '/settings/pipeline', label: 'Pipeline de vendas', desc: 'Gerencie as etapas do seu funil' },
+  { href: '/settings/members', label: 'Membros', desc: 'Convide e gerencie membros da equipe' },
+  { href: '/settings/tags', label: 'Tags', desc: 'Crie tags para classificar registros' },
+  { href: '/settings/custom-fields', label: 'Campos personalizados', desc: 'Adicione campos customizados aos seus registros' },
+  { href: '/settings/email-templates', label: 'Templates de email', desc: 'Crie templates reutilizáveis para emails' },
+]
 
 function SubmitButton() {
   const { pending } = useFormStatus()
   return (
-    <Button type="submit" size="sm" disabled={pending}>
+    <button
+      type="submit"
+      disabled={pending}
+      className="px-4 py-2 rounded-lg text-sm font-medium transition-all"
+      style={{ background: 'var(--accent1)', color: '#fff', opacity: pending ? 0.6 : 1 }}
+    >
       {pending ? 'Salvando...' : 'Salvar'}
-    </Button>
+    </button>
   )
 }
 
@@ -23,73 +40,42 @@ export default function SettingsPage() {
 
   return (
     <div className="max-w-2xl">
-      <h1 className="text-2xl font-bold text-slate-900 mb-6">Configurações</h1>
+      <h1 className="text-2xl font-bold mb-6" style={{ fontFamily: 'var(--font-syne)', color: 'var(--text-primary)' }}>
+        Configurações
+      </h1>
 
-      <div className="grid gap-4 mb-6">
-        <Link href="/settings/pipeline" className="block">
-          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <p className="font-medium">Pipeline de vendas</p>
-              <p className="text-sm text-slate-500">Gerencie as etapas do seu funil</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/settings/members" className="block">
-          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <p className="font-medium">Membros</p>
-              <p className="text-sm text-slate-500">Convide e gerencie membros da equipe</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/settings/tags" className="block">
-          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <p className="font-medium">Tags</p>
-              <p className="text-sm text-slate-500">Crie tags para classificar registros</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/settings/custom-fields" className="block">
-          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <p className="font-medium">Campos personalizados</p>
-              <p className="text-sm text-slate-500">Adicione campos customizados aos seus registros</p>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/settings/email-templates" className="block">
-          <Card className="hover:border-slate-400 transition-colors cursor-pointer">
-            <CardContent className="p-4">
-              <p className="font-medium">Templates de email</p>
-              <p className="text-sm text-slate-500">Crie templates reutilizáveis para emails</p>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="space-y-2 mb-8">
+        {settingLinks.map(({ href, label, desc }) => (
+          <Link key={href} href={href} className="flex items-center gap-4 p-4 rounded-xl transition-colors group"
+            style={card}
+          >
+            <div className="flex-1">
+              <p className="font-medium" style={{ color: 'var(--text-secondary)' }}>{label}</p>
+              <p className="text-sm mt-0.5" style={{ color: 'var(--text-dim)' }}>{desc}</p>
+            </div>
+            <ChevronRight className="w-4 h-4 shrink-0" style={{ color: 'var(--text-faint)' }} />
+          </Link>
+        ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Organização</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form action={formAction} className="space-y-4">
-            {state?.error && (
-              <div className="bg-red-50 text-red-700 text-sm p-3 rounded-md">{state.error}</div>
-            )}
-            {state?.success && (
-              <div className="bg-green-50 text-green-700 text-sm p-3 rounded-md">
-                Salvo com sucesso!
-              </div>
-            )}
-            <div className="space-y-1">
-              <Label htmlFor="name">Nome da organização</Label>
-              <Input id="name" name="name" required />
-            </div>
-            <SubmitButton />
-          </form>
-        </CardContent>
-      </Card>
+      <div style={{ ...card, padding: '20px' }}>
+        <p className="text-sm font-semibold mb-4" style={{ fontFamily: 'var(--font-syne)', color: 'var(--text-secondary)' }}>
+          Organização
+        </p>
+        <form action={formAction} className="space-y-4">
+          {state?.error && (
+            <div className="text-sm p-3 rounded-lg" style={{ background: 'rgba(248,113,113,0.1)', color: '#f87171' }}>{state.error}</div>
+          )}
+          {state?.success && (
+            <div className="text-sm p-3 rounded-lg" style={{ background: 'rgba(52,211,153,0.1)', color: '#34d399' }}>Salvo com sucesso!</div>
+          )}
+          <div className="space-y-1.5">
+            <label className="text-sm" style={{ color: 'var(--text-muted)' }}>Nome da organização</label>
+            <Input id="name" name="name" required />
+          </div>
+          <SubmitButton />
+        </form>
+      </div>
     </div>
   )
 }

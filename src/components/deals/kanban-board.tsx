@@ -133,12 +133,12 @@ export function KanbanBoard({ stages, deals }: KanbanBoardProps) {
           return (
             <div key={stage.id} className="flex-shrink-0 w-72">
               <div className="flex items-center gap-2 mb-3">
-                <div
-                  className="w-3 h-3 rounded-full"
-                  style={{ backgroundColor: stage.color ?? '#94a3b8' }}
-                />
-                <h3 className="font-medium text-slate-700 text-sm">{stage.name}</h3>
-                <span className="ml-auto text-xs text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: stage.color ?? '#2563eb' }} />
+                <h3 className="font-medium text-sm" style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-syne)' }}>
+                  {stage.name}
+                </h3>
+                <span className="ml-auto text-xs px-2 py-0.5 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.08)', color: 'var(--text-secondary)' }}>
                   {stageDeals.length}
                 </span>
               </div>
@@ -147,7 +147,8 @@ export function KanbanBoard({ stages, deals }: KanbanBoardProps) {
                 items={stageDeals.map((d) => d.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="bg-slate-100 rounded-lg p-2 min-h-24 space-y-2">
+                <div className="rounded-xl p-2 min-h-24 space-y-2"
+                  style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid var(--surface-border)' }}>
                   {stageDeals.map((deal) => (
                     <SortableDealCard key={deal.id} deal={deal} />
                   ))}

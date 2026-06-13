@@ -5,11 +5,17 @@ import { getActiveOrgId } from '@/lib/org'
 import { deleteCompany } from '@/server/actions/company'
 import { AvatarInitials } from '@/components/ui/avatar-initials'
 import { SearchInput } from '@/components/ui/search-input'
-import { buttonVariants } from '@/components/ui/button'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 
 interface Props {
   searchParams: Promise<{ q?: string }>
+}
+
+const surface = {
+  background: 'var(--surface)',
+  border: '1px solid var(--surface-border)',
+  borderRadius: 14,
+  overflow: 'hidden' as const,
 }
 
 export default async function CompaniesPage({ searchParams }: Props) {
@@ -31,11 +37,19 @@ export default async function CompaniesPage({ searchParams }: Props) {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Empresas</h1>
-          <p className="text-slate-500 text-sm mt-0.5">{companies?.length ?? 0} empresa(s)</p>
+          <h1 className="text-2xl font-bold" style={{ fontFamily: 'var(--font-syne)', color: 'var(--text-primary)' }}>
+            Empresas
+          </h1>
+          <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            {companies?.length ?? 0} empresa(s)
+          </p>
         </div>
-        <Link href="/companies/new" className={buttonVariants()}>
-          <Plus className="w-4 h-4 mr-2" />
+        <Link
+          href="/companies/new"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all"
+          style={{ background: 'var(--accent1)', color: '#fff' }}
+        >
+          <Plus className="w-4 h-4" />
           Nova empresa
         </Link>
       </div>
@@ -46,54 +60,54 @@ export default async function CompaniesPage({ searchParams }: Props) {
         </Suspense>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+      <div style={surface}>
         {!companies || companies.length === 0 ? (
-          <div className="p-12 text-center text-slate-500">
-            <p className="text-lg font-medium">
+          <div className="p-12 text-center">
+            <p className="text-lg font-medium" style={{ color: 'rgba(255,255,255,0.5)' }}>
               {q ? `Nenhum resultado para "${q}"` : 'Nenhuma empresa ainda'}
             </p>
-            {!q && <p className="text-sm mt-1">Cadastre sua primeira empresa para começar</p>}
+            {!q && <p className="text-sm mt-1" style={{ color: 'var(--text-dim)' }}>Cadastre sua primeira empresa para começar</p>}
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-100 bg-slate-50">
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Nome</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Setor</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Domínio</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Tamanho</th>
-                <th className="text-left px-4 py-3 text-xs font-medium text-slate-500 uppercase tracking-wide">Criado em</th>
-                <th className="px-4 py-3" />
+              <tr style={{ borderBottom: '1px solid var(--surface-border)', background: 'rgba(255,255,255,0.02)' }}>
+                {['Nome', 'Setor', 'Domínio', 'Tamanho', 'Criado em', ''].map((h) => (
+                  <th key={h} className="text-left px-4 py-3 text-xs font-medium uppercase tracking-wide"
+                    style={{ color: 'var(--text-muted)' }}>
+                    {h}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {companies.map((c) => (
-                <tr key={c.id} className="group border-b border-slate-50 hover:bg-slate-50 transition-colors">
+                <tr key={c.id} className="group transition-colors hover:bg-white/[0.025]"
+                  style={{ borderBottom: '1px solid var(--surface-border)' }}
+                >
                   <td className="px-4 py-3">
-                    <Link href={`/companies/${c.id}`} className="flex items-center gap-3 hover:text-blue-700">
+                    <Link href={`/companies/${c.id}`} className="flex items-center gap-3">
                       <AvatarInitials name={c.name} size="sm" />
-                      <span className="font-medium text-slate-900">{c.name}</span>
+                      <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{c.name}</span>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-slate-500">{c.industry ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{c.domain ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-500">{c.size ?? '—'}</td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
+                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{c.industry ?? '—'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{c.domain ?? '—'}</td>
+                  <td className="px-4 py-3" style={{ color: 'var(--text-muted)' }}>{c.size ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs" style={{ color: 'var(--text-dim)' }}>
                     {new Date(c.created_at).toLocaleDateString('pt-BR')}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Link
-                        href={`/companies/${c.id}/edit`}
-                        className="p-1.5 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                      <Link href={`/companies/${c.id}/edit`}
+                        className="p-1.5 rounded transition-colors"
+                        style={{ color: 'var(--text-dim)' }}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Link>
                       <form action={deleteCompany.bind(null, c.id)}>
-                        <button
-                          type="submit"
-                          className="p-1.5 rounded text-slate-400 hover:text-red-600 hover:bg-red-50"
-                        >
+                        <button type="submit" className="p-1.5 rounded transition-colors"
+                          style={{ color: 'var(--text-dim)' }}>
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </form>
