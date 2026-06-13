@@ -8,7 +8,6 @@ import {
   LayoutDashboard,
   Building2,
   TrendingUp,
-  FileText,
   CheckSquare,
   Settings,
   LogOut,
@@ -27,7 +26,6 @@ const sections = [
     label: 'VENDAS',
     items: [
       { href: '/deals', label: 'Negócios', icon: TrendingUp },
-      { href: '/proposals', label: 'Propostas', icon: FileText },
       { href: '/tasks', label: 'Tarefas', icon: CheckSquare },
     ],
   },
