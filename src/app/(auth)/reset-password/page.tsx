@@ -5,14 +5,13 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { login } from '@/server/actions/auth'
-import Link from 'next/link'
+import { updatePassword } from '@/server/actions/auth'
 
 type State = { error?: string } | undefined
 
-export function LoginForm() {
+export default function ResetPasswordPage() {
   const [state, action, pending] = useActionState<State, FormData>(
-    (_prev, formData) => login(formData),
+    (_prev, formData) => updatePassword(formData),
     undefined
   )
 
@@ -26,33 +25,24 @@ export function LoginForm() {
     }}>
       <div className="mb-8">
         <Image src="/logo-oak.png" alt="Oak" width={80} height={23} priority style={{ filter: 'brightness(0) invert(1)' }} />
-        <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>Entre na sua conta para continuar</p>
+        <p className="text-sm mt-3" style={{ color: 'var(--text-muted)' }}>Defina sua nova senha</p>
       </div>
       <form action={action} className="space-y-4">
         <div className="space-y-1.5">
-          <Label htmlFor="email" style={{ color: 'var(--text-secondary)' }}>Email</Label>
-          <Input id="email" name="email" type="email" required placeholder="voce@empresa.com" />
+          <Label htmlFor="password" style={{ color: 'var(--text-secondary)' }}>Nova senha</Label>
+          <Input id="password" name="password" type="password" required placeholder="Mínimo 8 caracteres" minLength={8} />
         </div>
         <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="password" style={{ color: 'var(--text-secondary)' }}>Senha</Label>
-            <Link href="/forgot-password" className="text-xs" style={{ color: 'var(--accent1)' }}>
-              Esqueceu a senha?
-            </Link>
-          </div>
-          <Input id="password" name="password" type="password" required placeholder="••••••••" />
+          <Label htmlFor="confirm" style={{ color: 'var(--text-secondary)' }}>Confirmar senha</Label>
+          <Input id="confirm" name="confirm" type="password" required placeholder="Repita a senha" minLength={8} />
         </div>
         {state?.error && (
           <p className="text-sm" style={{ color: '#f87171' }}>{state.error}</p>
         )}
         <Button type="submit" className="w-full mt-2" disabled={pending}
           style={{ background: 'var(--accent1)', color: '#fff', border: 'none' }}>
-          {pending ? 'Entrando...' : 'Entrar'}
+          {pending ? 'Salvando...' : 'Salvar nova senha'}
         </Button>
-        <p className="text-sm text-center pt-1" style={{ color: 'var(--text-dim)' }}>
-          Não tem conta?{' '}
-          <Link href="/signup" className="font-medium" style={{ color: 'var(--accent1)' }}>Criar conta</Link>
-        </p>
       </form>
     </div>
   )
