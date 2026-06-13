@@ -81,22 +81,51 @@ export async function updateTask(_prev: unknown, formData: FormData) {
   redirect('/tasks')
 }
 
-export async function toggleTask(id: string, done: boolean): Promise<void> {
+export async function toggleTask(id: string, done: boolean, revalidate = '/tasks'): Promise<void> {
   const orgId = await getActiveOrgId()
   if (!orgId) return
 
   const supabase = await createClient()
   await supabase.from('tasks').update({ done: !done }).eq('id', id).eq('org_id', orgId)
 
-  revalidatePath('/tasks')
+  revalidatePath(revalidate)
 }
 
-export async function deleteTask(id: string): Promise<void> {
+export async function deleteTask(id: string, revalidate = '/tasks'): Promise<void> {
   const orgId = await getActiveOrgId()
   if (!orgId) return
 
   const supabase = await createClient()
   await supabase.from('tasks').delete().eq('id', id).eq('org_id', orgId)
 
-  revalidatePath('/tasks')
+  revalidatePath(revalidate)
+}
+
+export async function createDealTask(_prev: unknown, formData: FormData) {
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { error: 'Sem organização ativa' }
+
+  const title = (formData.get('title') as string)?.trim()
+  const dealId = formData.get('deal_id') as string
+  const dueDate = formData.get('due_date') as string | null
+
+  if (!title) return { error: 'Título obrigatório' }
+  if (!dealId) return { error: 'Negócio não identificado' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'Não autenticado' }
+
+  const { error } = await supabase.from('tasks').insert({
+    title,
+    org_id: orgId,
+    created_by: user.id,
+    done: false,
+    deal_id: dealId,
+    due_date: dueDate || null,
+  })
+  if (error) return { error: error.message }
+
+  revalidatePath(`/deals/${dealId}`)
+  return null
 }

@@ -11,6 +11,7 @@ import { TagPicker } from '@/components/tags/tag-picker'
 import { CustomFieldDisplay } from '@/components/custom-fields/custom-field-display'
 import { ProposalForm } from '@/components/proposals/proposal-form'
 import { ProposalList } from '@/components/proposals/proposal-list'
+import { DealTasksSection } from '@/components/tasks/deal-tasks-section'
 import { Pencil, Trash2, DollarSign, Calendar, Building2, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -41,6 +42,7 @@ export default async function DealDetailPage({ params }: Props) {
     { data: fieldDefs },
     { data: fieldValues },
     { data: emailTemplates },
+    { data: dealTasks },
   ] = await Promise.all([
     supabase
       .from('deals')
@@ -65,6 +67,7 @@ export default async function DealDetailPage({ params }: Props) {
       ? supabase.from('custom_field_values').select('field_id, value').in('field_id', fieldDefIds).eq('entity_id', id)
       : Promise.resolve({ data: [] }),
     supabase.from('email_templates').select('id, name, subject, body').eq('org_id', orgId!).order('name'),
+    supabase.from('tasks').select('id, title, done, due_date').eq('org_id', orgId!).eq('deal_id', id).order('done').order('created_at'),
   ])
 
   if (!deal) notFound()
@@ -221,6 +224,14 @@ export default async function DealDetailPage({ params }: Props) {
             </CardHeader>
             <CardContent>
               <ActivityFeed dealId={id} />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-700">Tarefas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DealTasksSection dealId={id} initialTasks={dealTasks ?? []} />
             </CardContent>
           </Card>
           <Card>
