@@ -4,8 +4,8 @@ import { RevenueGoalChart } from '@/components/dashboard/revenue-goal-chart'
 import { GoalForm } from './goal-form'
 import { upsertRevenueGoal } from '@/server/actions/reports'
 import {
-  TrendingUp, Target, BarChart3, Percent, Briefcase, PauseCircle,
-  CheckCircle2, DollarSign, Users, ArrowUpRight, Layers,
+  TrendingUp, Target, BarChart3, Percent,
+  DollarSign, Users, ArrowUpRight, Layers,
 } from 'lucide-react'
 
 const fmt = (v: number) =>
@@ -51,7 +51,6 @@ export default async function ReportsPage() {
     { data: stages },
     { data: goals },
     { data: openDealsWithStages },
-    { data: allProjects },
     { data: wonDealsDetail },
     { data: wonDealsWithCompanies },
   ] = await Promise.all([
@@ -60,7 +59,6 @@ export default async function ReportsPage() {
     supabase.from('pipeline_stages').select('id, name, position, probability').eq('org_id', orgId!).order('position'),
     supabase.from('revenue_goals').select('year, month, goal').eq('org_id', orgId!).order('year', { ascending: false }).order('month', { ascending: false }).limit(12),
     supabase.from('deals').select('value, stage_id, pipeline_stages(probability)').eq('org_id', orgId!).eq('status', 'open'),
-    supabase.from('projects').select('id, status, start_date, deal_id, deals(value, title, companies(name))').eq('org_id', orgId!),
     supabase.from('deals').select('value, created_at, closed_at, source').eq('org_id', orgId!).eq('status', 'won').not('closed_at', 'is', null),
     supabase.from('deals').select('value, companies(id, name)').eq('org_id', orgId!).eq('status', 'won').not('closed_at', 'is', null),
   ])
@@ -125,19 +123,6 @@ export default async function ReportsPage() {
 
   const currentGoal = goals?.find((g) => g.year === currentYear && g.month === currentMonth)
   const goalProgress = currentGoal && wonThisMonth > 0 ? Math.min((wonThisMonth / currentGoal.goal) * 100, 100) : 0
-
-  // ── Projects ──────────────────────────────────────────────────────────────
-
-  type ProjectRow = {
-    id: string; status: string; start_date: string; deal_id: string
-    deals: { value: number | null; title: string; companies: { name: string } | null } | null
-  }
-  const projects = (allProjects ?? []) as ProjectRow[]
-  const activeProjects = projects.filter((p) => p.status === 'active')
-  const pausedProjects = projects.filter((p) => p.status === 'paused')
-  const closedThisYear = projects.filter((p) => p.status === 'closed' && new Date(p.start_date).getFullYear() === currentYear)
-  const activeRevenue = activeProjects.reduce((sum, p) => sum + (p.deals?.value ?? 0), 0)
-  const activeProjectRows = activeProjects.slice().sort((a, b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime())
 
   // ── Performance de Aquisição (by source) ──────────────────────────────────
 
@@ -209,10 +194,6 @@ export default async function ReportsPage() {
     entry.count++
   }
   const topClients = Array.from(clientAgg.values()).sort((a, b) => b.value - a.value).slice(0, 8)
-
-  // ── MRR estimado ──────────────────────────────────────────────────────────
-
-  const mrrEstimado = activeRevenue > 0 ? activeRevenue / 12 : null
 
   // ── Previsão de receita (pipeline por probabilidade) ──────────────────────
 
@@ -387,12 +368,6 @@ export default async function ReportsPage() {
               sub: 'empresas com negócios ganhos',
               color: '#10b981',
             },
-            {
-              label: 'Receita ativa',
-              value: fmt(activeRevenue),
-              sub: `${activeProjects.length} projetos ativos`,
-              color: '#8b5cf6',
-            },
           ].map((k) => (
             <div key={k.label} style={{ ...card, padding: '16px', borderTop: `2px solid ${k.color}` }}>
               <p className="text-[10px] uppercase tracking-wider mb-2" style={{ color: 'var(--text-dim)' }}>{k.label}</p>
@@ -456,64 +431,7 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      {/* ── 4. MRR Estimado ─────────────────────────────────────────────── */}
-      <div style={{ ...card, padding: '20px' }} className="mb-6">
-        <SectionHead title="MRR Estimado" sub="Receita mensal recorrente baseada em projetos ativos" />
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            { icon: Briefcase,    iconColor: '#34d399', label: 'Projetos ativos',      value: String(activeProjects.length) },
-            { icon: PauseCircle,  iconColor: '#f59e0b', label: 'Projetos pausados',    value: String(pausedProjects.length) },
-            { icon: CheckCircle2, iconColor: '#a0a0b8', label: 'Encerrados este ano',  value: String(closedThisYear.length) },
-            { icon: DollarSign,   iconColor: '#2563eb', label: 'ARR ativo',            value: fmt(activeRevenue) },
-          ].map((k) => {
-            const Icon = k.icon
-            return (
-              <div key={k.label} style={{ ...card, padding: '14px' }}>
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="w-4 h-4" style={{ color: k.iconColor }} />
-                  <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{k.label}</span>
-                </div>
-                <p className="text-xl font-bold" style={{ fontFamily: 'var(--font-syne)', color: 'var(--text-secondary)' }}>{k.value}</p>
-              </div>
-            )
-          })}
-        </div>
-        {mrrEstimado !== null && (
-          <div className="mt-4 p-4 rounded-xl" style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)' }}>
-            <p className="text-xs mb-1" style={{ color: 'var(--text-dim)' }}>MRR estimado (ARR / 12)</p>
-            <p className="text-3xl font-bold" style={{ fontFamily: 'var(--font-syne)', color: '#2563eb' }}>{fmt(mrrEstimado)}</p>
-            <p className="text-xs mt-1" style={{ color: 'var(--text-faint)' }}>Estimativa baseada em contratos ativos assumindo 12 meses de duração</p>
-          </div>
-        )}
-
-        {/* Active projects table */}
-        {activeProjectRows.length > 0 && (
-          <div className="mt-4">
-            <p className="text-xs font-semibold mb-3" style={{ color: 'var(--text-dim)' }}>PROJETOS ATIVOS</p>
-            <div className="space-y-2">
-              <div className="grid grid-cols-3 gap-4 pb-2 text-xs font-semibold" style={{ color: 'var(--text-dim)', borderBottom: '1px solid var(--surface-border)' }}>
-                <span>Cliente</span><span>Valor</span><span>Início</span>
-              </div>
-              {activeProjectRows.map((p) => {
-                const clientName = p.deals?.companies?.name ?? p.deals?.title ?? '—'
-                return (
-                  <div key={p.id} className="grid grid-cols-3 gap-4 py-2 text-sm" style={{ borderBottom: '1px solid var(--surface-border)', color: 'var(--text-secondary)' }}>
-                    <span className="truncate">{clientName}</span>
-                    <span>{p.deals?.value != null ? fmt(p.deals.value) : '—'}</span>
-                    <span>
-                      <a href={`/deals/${p.deal_id}`} style={{ color: '#2563eb', textDecoration: 'none' }}>
-                        {new Date(p.start_date + 'T12:00:00').toLocaleDateString('pt-BR')} →
-                      </a>
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* ── 5. Previsão de Receita ──────────────────────────────────────── */}
+      {/* ── 4. Previsão de Receita ──────────────────────────────────────── */}
       <div style={{ ...card, padding: '20px' }} className="mb-6">
         <SectionHead title="Previsão de Receita" sub="Pipeline aberto segmentado por probabilidade de fechamento" />
         {tiers.every((t) => t.count === 0) ? (
