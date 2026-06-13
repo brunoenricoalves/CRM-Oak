@@ -81,24 +81,44 @@ export async function updateTask(_prev: unknown, formData: FormData) {
   redirect('/tasks')
 }
 
-export async function toggleTask(id: string, done: boolean, revalidate = '/tasks'): Promise<void> {
+export async function toggleTask(id: string, done: boolean): Promise<void> {
   const orgId = await getActiveOrgId()
   if (!orgId) return
 
   const supabase = await createClient()
   await supabase.from('tasks').update({ done: !done }).eq('id', id).eq('org_id', orgId)
 
-  revalidatePath(revalidate)
+  revalidatePath('/tasks')
 }
 
-export async function deleteTask(id: string, revalidate = '/tasks'): Promise<void> {
+export async function deleteTask(id: string): Promise<void> {
   const orgId = await getActiveOrgId()
   if (!orgId) return
 
   const supabase = await createClient()
   await supabase.from('tasks').delete().eq('id', id).eq('org_id', orgId)
 
-  revalidatePath(revalidate)
+  revalidatePath('/tasks')
+}
+
+export async function toggleDealTask(taskId: string, done: boolean, dealId: string): Promise<void> {
+  const orgId = await getActiveOrgId()
+  if (!orgId) return
+
+  const supabase = await createClient()
+  await supabase.from('tasks').update({ done: !done }).eq('id', taskId).eq('org_id', orgId)
+
+  revalidatePath(`/deals/${dealId}`)
+}
+
+export async function deleteDealTask(taskId: string, dealId: string): Promise<void> {
+  const orgId = await getActiveOrgId()
+  if (!orgId) return
+
+  const supabase = await createClient()
+  await supabase.from('tasks').delete().eq('id', taskId).eq('org_id', orgId)
+
+  revalidatePath(`/deals/${dealId}`)
 }
 
 export async function createDealTask(_prev: unknown, formData: FormData) {

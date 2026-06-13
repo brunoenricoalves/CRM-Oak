@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useTransition } from 'react'
-import { createDealTask, toggleTask, deleteTask } from '@/server/actions/task'
+import { createDealTask, toggleDealTask, deleteDealTask } from '@/server/actions/task'
 import { CheckSquare, Square, Trash2, Plus } from 'lucide-react'
 
 interface Task {
@@ -30,7 +30,7 @@ export function DealTasksSection({ dealId, initialTasks }: Props) {
 
       {initialTasks.map((task) => (
         <div key={task.id} className="flex items-start gap-3 py-2" style={{ borderBottom: '1px solid var(--surface-border)' }}>
-          <form action={toggleTask.bind(null, task.id, task.done, `/deals/${dealId}`)}>
+          <form action={toggleDealTask.bind(null, task.id, task.done, dealId)}>
             <button type="submit" className="mt-0.5 shrink-0 transition-colors" style={{ color: task.done ? 'var(--accent3)' : 'var(--text-dim)' }}>
               {task.done ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
             </button>
@@ -45,7 +45,7 @@ export function DealTasksSection({ dealId, initialTasks }: Props) {
               </p>
             )}
           </div>
-          <form action={deleteTask.bind(null, task.id, `/deals/${dealId}`)}>
+          <form action={deleteDealTask.bind(null, task.id, dealId)}>
             <button type="submit" className="shrink-0 transition-colors" style={{ color: 'var(--text-faint)' }}
               onMouseEnter={e => (e.currentTarget.style.color = '#f87171')}
               onMouseLeave={e => (e.currentTarget.style.color = 'var(--text-faint)')}>
