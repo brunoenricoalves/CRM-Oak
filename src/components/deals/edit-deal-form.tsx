@@ -10,7 +10,6 @@ import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
 interface Stage { id: string; name: string }
-interface Contact { id: string; name: string }
 interface Company { id: string; name: string }
 interface Props {
   deal: {
@@ -18,12 +17,10 @@ interface Props {
     title: string
     value: number | null
     stage_id: string | null
-    contact_id: string | null
     company_id: string | null
     close_date: string | null
   }
   stages: Stage[]
-  contacts: Contact[]
   companies: Company[]
 }
 
@@ -36,7 +33,7 @@ function SubmitButton() {
   )
 }
 
-export function EditDealForm({ deal, stages, contacts, companies }: Props) {
+export function EditDealForm({ deal, stages, companies }: Props) {
   const [state, formAction] = useActionState(updateDeal, null)
 
   return (
@@ -71,20 +68,6 @@ export function EditDealForm({ deal, stages, contacts, companies }: Props) {
           <option value="">Sem etapa</option>
           {stages.map((s) => (
             <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="contact_id">Contato</Label>
-        <select
-          id="contact_id"
-          name="contact_id"
-          defaultValue={deal.contact_id ?? ''}
-          className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-        >
-          <option value="">Nenhum</option>
-          {contacts.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
       </div>

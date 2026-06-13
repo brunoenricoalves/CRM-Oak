@@ -17,12 +17,11 @@ export default async function EditDealPage({ params }: Props) {
   const [
     { data: deal },
     { data: stages },
-    { data: contacts },
     { data: companies },
   ] = await Promise.all([
     supabase
       .from('deals')
-      .select('id, title, value, stage_id, contact_id, company_id, close_date')
+      .select('id, title, value, stage_id, company_id, close_date')
       .eq('id', id)
       .eq('org_id', orgId!)
       .single(),
@@ -31,11 +30,6 @@ export default async function EditDealPage({ params }: Props) {
       .select('id, name')
       .eq('org_id', orgId!)
       .order('position'),
-    supabase
-      .from('contacts')
-      .select('id, name')
-      .eq('org_id', orgId!)
-      .order('name'),
     supabase
       .from('companies')
       .select('id, name')
@@ -61,7 +55,6 @@ export default async function EditDealPage({ params }: Props) {
           <EditDealForm
             deal={deal}
             stages={stages ?? []}
-            contacts={contacts ?? []}
             companies={companies ?? []}
           />
         </CardContent>

@@ -9,17 +9,14 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
-interface Contact { id: string; name: string }
 interface Deal { id: string; title: string }
 interface Props {
   task: {
     id: string
     title: string
     due_date: string | null
-    contact_id: string | null
     deal_id: string | null
   }
-  contacts: Contact[]
   deals: Deal[]
 }
 
@@ -32,7 +29,7 @@ function SubmitButton() {
   )
 }
 
-export function EditTaskForm({ task, contacts, deals }: Props) {
+export function EditTaskForm({ task, deals }: Props) {
   const [state, formAction] = useActionState(updateTask, null)
 
   return (
@@ -48,20 +45,6 @@ export function EditTaskForm({ task, contacts, deals }: Props) {
       <div className="space-y-1">
         <Label htmlFor="due_date">Data de vencimento</Label>
         <Input id="due_date" name="due_date" type="date" defaultValue={task.due_date ?? ''} />
-      </div>
-      <div className="space-y-1">
-        <Label htmlFor="contact_id">Contato</Label>
-        <select
-          id="contact_id"
-          name="contact_id"
-          defaultValue={task.contact_id ?? ''}
-          className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-        >
-          <option value="">Nenhum</option>
-          {contacts.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
       </div>
       <div className="space-y-1">
         <Label htmlFor="deal_id">Negócio</Label>

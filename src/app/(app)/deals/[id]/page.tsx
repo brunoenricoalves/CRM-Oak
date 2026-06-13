@@ -11,7 +11,7 @@ import { TagPicker } from '@/components/tags/tag-picker'
 import { CustomFieldDisplay } from '@/components/custom-fields/custom-field-display'
 import { ProposalForm } from '@/components/proposals/proposal-form'
 import { ProposalList } from '@/components/proposals/proposal-list'
-import { Pencil, Trash2, DollarSign, Calendar, User, Building2, Tag } from 'lucide-react'
+import { Pencil, Trash2, DollarSign, Calendar, Building2, Tag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -44,7 +44,7 @@ export default async function DealDetailPage({ params }: Props) {
   ] = await Promise.all([
     supabase
       .from('deals')
-      .select('id, title, value, status, close_date, stage_id, contacts(id, name, email), companies(id, name), pipeline_stages(name)')
+      .select('id, title, value, status, close_date, stage_id, companies(id, name), pipeline_stages(name)')
       .eq('id', id)
       .eq('org_id', orgId!)
       .single(),
@@ -69,7 +69,6 @@ export default async function DealDetailPage({ params }: Props) {
 
   if (!deal) notFound()
 
-  const contact = deal.contacts as { id: string; name: string; email: string | null } | null
   const company = deal.companies as { id: string; name: string } | null
   const stage = deal.pipeline_stages as { name: string } | null
   const assignedTags = (dealTagRows ?? []).map((r) => r.tags as { id: string; name: string; color: string }).filter(Boolean)
@@ -175,12 +174,6 @@ export default async function DealDetailPage({ params }: Props) {
                   <span>{new Date(deal.close_date + 'T12:00:00').toLocaleDateString('pt-BR')}</span>
                 </div>
               )}
-              {contact && (
-                <div className="flex items-center gap-2 text-slate-600">
-                  <User className="w-4 h-4 text-slate-400 shrink-0" />
-                  <Link href={`/contacts/${contact.id}`} className="hover:text-blue-600">{contact.name}</Link>
-                </div>
-              )}
               {company && (
                 <div className="flex items-center gap-2 text-slate-600">
                   <Building2 className="w-4 h-4 text-slate-400 shrink-0" />
@@ -218,7 +211,6 @@ export default async function DealDetailPage({ params }: Props) {
             <CardContent>
               <ActivityForm
                 dealId={id}
-                contactEmail={contact?.email ?? undefined}
                 emailTemplates={emailTemplates ?? []}
               />
             </CardContent>
@@ -238,7 +230,6 @@ export default async function DealDetailPage({ params }: Props) {
             <CardContent>
               <ProposalForm
                 dealId={id}
-                contactId={contact?.id}
                 companyId={company?.id}
                 companyName={company?.name}
               />

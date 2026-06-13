@@ -6,7 +6,6 @@ import { logout } from '@/server/actions/auth'
 import { NotificationBell } from './notification-bell'
 import {
   LayoutDashboard,
-  Users,
   Building2,
   TrendingUp,
   FileText,
@@ -22,7 +21,6 @@ const sections = [
     label: 'PRINCIPAL',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-      { href: '/contacts', label: 'Contatos', icon: Users },
       { href: '/companies', label: 'Empresas', icon: Building2 },
     ],
   },

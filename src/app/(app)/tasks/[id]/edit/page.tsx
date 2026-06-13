@@ -14,14 +14,13 @@ export default async function EditTaskPage({ params }: Props) {
   const orgId = await getActiveOrgId()
   const supabase = await createClient()
 
-  const [{ data: task }, { data: contacts }, { data: deals }] = await Promise.all([
+  const [{ data: task }, { data: deals }] = await Promise.all([
     supabase
       .from('tasks')
-      .select('id, title, due_date, contact_id, deal_id')
+      .select('id, title, due_date, deal_id')
       .eq('id', id)
       .eq('org_id', orgId!)
       .single(),
-    supabase.from('contacts').select('id, name').eq('org_id', orgId!).order('name'),
     supabase.from('deals').select('id, title').eq('org_id', orgId!).eq('status', 'open').order('title'),
   ])
 
@@ -42,7 +41,6 @@ export default async function EditTaskPage({ params }: Props) {
         <CardContent>
           <EditTaskForm
             task={task}
-            contacts={contacts ?? []}
             deals={deals ?? []}
           />
         </CardContent>
