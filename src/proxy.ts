@@ -8,7 +8,10 @@ export async function proxy(request: NextRequest) {
   if (!url || !key) {
     const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                        request.nextUrl.pathname.startsWith('/signup') ||
-                       request.nextUrl.pathname.startsWith('/invite')
+                       request.nextUrl.pathname.startsWith('/invite') ||
+                       request.nextUrl.pathname.startsWith('/forgot-password') ||
+                       request.nextUrl.pathname.startsWith('/reset-password') ||
+                       request.nextUrl.pathname.startsWith('/auth/')
     if (!isAuthPage) return NextResponse.redirect(new URL('/login', request.url))
     return NextResponse.next({ request })
   }
@@ -29,7 +32,10 @@ export async function proxy(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const isAuthPage = request.nextUrl.pathname.startsWith('/login') ||
                      request.nextUrl.pathname.startsWith('/signup') ||
-                     request.nextUrl.pathname.startsWith('/invite')
+                     request.nextUrl.pathname.startsWith('/invite') ||
+                     request.nextUrl.pathname.startsWith('/forgot-password') ||
+                     request.nextUrl.pathname.startsWith('/reset-password') ||
+                     request.nextUrl.pathname.startsWith('/auth/')
 
   if (!user && !isAuthPage) {
     return NextResponse.redirect(new URL('/login', request.url))
