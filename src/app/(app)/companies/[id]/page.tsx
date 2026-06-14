@@ -10,7 +10,7 @@ import { Button, buttonVariants } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TagPicker } from '@/components/tags/tag-picker'
 import { CustomFieldDisplay } from '@/components/custom-fields/custom-field-display'
-import { Pencil, Trash2, Globe, Briefcase, Users } from 'lucide-react'
+import { Pencil, Trash2, Globe, Briefcase, Users, TrendingUp } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -31,7 +31,6 @@ export default async function CompanyDetailPage({ params }: Props) {
 
   const [
     { data: company },
-    { data: contacts },
     { data: deals },
     { data: allTags },
     { data: companyTagRows },
@@ -45,12 +44,6 @@ export default async function CompanyDetailPage({ params }: Props) {
       .eq('id', id)
       .eq('org_id', orgId!)
       .single(),
-    supabase
-      .from('contacts')
-      .select('id, name, email')
-      .eq('company_id', id)
-      .eq('org_id', orgId!)
-      .order('name'),
     supabase
       .from('deals')
       .select('id, title, value, status, pipeline_stages(name)')
@@ -156,45 +149,35 @@ export default async function CompanyDetailPage({ params }: Props) {
             </CardContent>
           </Card>
 
-          {contacts && contacts.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700">
-                  Contatos ({contacts.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {contacts.map((c) => (
-                  <Link key={c.id} href={`/contacts/${c.id}`} className="flex items-center gap-2 p-1.5 rounded hover:bg-slate-50">
-                    <AvatarInitials name={c.name} size="sm" />
-                    <div>
-                      <p className="text-sm font-medium text-slate-800">{c.name}</p>
-                      {c.email && <p className="text-xs text-slate-400">{c.email}</p>}
-                    </div>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
-          )}
-
-          {deals && deals.length > 0 && (
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold text-slate-700">Negócios</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {deals.map((d) => {
-                  const stage = d.pipeline_stages as { name: string } | null
-                  return (
-                    <Link key={d.id} href={`/deals/${d.id}`} className="block p-2 rounded-lg hover:bg-slate-50 border border-slate-100">
-                      <p className="font-medium text-slate-800 text-sm truncate">{d.title}</p>
-                      <p className="text-xs text-slate-500">{stage?.name ?? '—'}</p>
-                    </Link>
-                  )
-                })}
-              </CardContent>
-            </Card>
-          )}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5" />
+                Negócios {deals && deals.length > 0 && `(${deals.length})`}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {!deals || deals.length === 0 ? (
+                <p className="text-xs text-slate-400">Nenhum negócio vinculado.</p>
+              ) : (
+                <div className="space-y-2">
+                  {deals.map((d) => {
+                    const stage = d.pipeline_stages as { name: string } | null
+                    const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(v)
+                    return (
+                      <Link key={d.id} href={`/deals/${d.id}`} className="block p-2 rounded-lg hover:bg-slate-50 border border-slate-100">
+                        <p className="font-medium text-slate-800 text-sm truncate">{d.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <p className="text-xs text-slate-500">{stage?.name ?? '—'}</p>
+                          {d.value != null && <p className="text-xs font-medium text-green-600">{fmt(d.value)}</p>}
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
 
         <div className="lg:col-span-2 space-y-4">

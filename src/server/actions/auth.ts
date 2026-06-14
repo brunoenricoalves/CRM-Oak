@@ -70,6 +70,14 @@ export async function signup(formData: FormData) {
       sameSite: 'lax',
       maxAge: 60 * 60 * 24 * 30,
     })
+
+    await admin.from('pipeline_stages').insert([
+      { org_id: orgId, name: 'Prospecção',   position: 1000, probability: 10 },
+      { org_id: orgId, name: 'Qualificação', position: 2000, probability: 25 },
+      { org_id: orgId, name: 'Proposta',     position: 3000, probability: 50 },
+      { org_id: orgId, name: 'Negociação',   position: 4000, probability: 75 },
+      { org_id: orgId, name: 'Fechamento',   position: 5000, probability: 90 },
+    ])
   }
 
   redirect('/dashboard')
