@@ -101,11 +101,7 @@ function DroppableColumn({ stage, deals, isOver }: { stage: Stage; deals: Deal[]
           ))}
         </SortableContext>
 
-        {deals.length === 0 && (
-          <div className="flex items-center justify-center h-16">
-            <p className="text-xs" style={{ color: 'var(--text-faint)' }}>Solte aqui</p>
-          </div>
-        )}
+        {deals.length === 0 && <div className="h-16" />}
       </div>
     </div>
   )
